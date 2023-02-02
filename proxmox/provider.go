@@ -1,0 +1,86 @@
+package proxmox
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/awlsring/terraform-provider-proxmox/internal/service"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+)
+
+func Provider() *schema.Provider {
+    return &schema.Provider{
+        Schema: map[string]*schema.Schema{
+			"username": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PROXMOX_USERNAME", nil),
+				Description: "Username for proxmox. Ex. awlsring@pam",
+			},
+			"password": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PROXMOX_PASSWORD", nil),
+				Description: "Password for specified user",
+				Sensitive:   true,
+			},
+			"api_key": {
+				Type:        schema.TypeString,
+				Description: "Proxmox API key",
+				Required:    true,
+				Sensitive:   true,
+				DefaultFunc: schema.EnvDefaultFunc("PROXMOX_API_KEY", nil),
+			},
+			"endpoint": {
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "Proxmox endpoint to connect with. Ex. https://10.0.0.2:8006",
+				DefaultFunc: schema.EnvDefaultFunc("PROXMOX_ENDPOINT", nil),
+			},
+			"skip_verify": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "Skip TLS verification. Defaults to true.",
+				DefaultFunc: schema.EnvDefaultFunc("PROXMOX_SKIP_VERIFY", true),
+			},
+		},
+		DataSourcesMap: map[string]*schema.Resource{
+			"proxmox_node": dataSourceNode(),
+		},
+        ConfigureContextFunc: providerConfigure,
+    }
+}
+
+func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {	
+	cfg, err := formConfig(d)
+	if err != nil {
+		return nil, diag.FromErr(err)
+	}
+
+	service, err := service.New(cfg)
+	if err != nil {
+		return nil, diag.FromErr(err)
+	}
+	return service, nil
+}
+
+func formConfig(d *schema.ResourceData) (service.ClientConfig, error){
+	username := d.Get("username").(string)
+	password := d.Get("password").(string)
+	apiKey := d.Get("api_key").(string)
+	endpoint := d.Get("endpoint").(string)
+	skipVerify := d.Get("skip_verify").(bool)
+
+	if endpoint == "" {
+		return service.ClientConfig{}, fmt.Errorf("endpoint is required")
+	}
+
+	return service.ClientConfig{
+		Username: username,
+		Password: password,
+		Token: apiKey,
+		Endpoint: endpoint,
+		SkipVerify: skipVerify,
+	}, nil
+}
