@@ -31,31 +31,49 @@ type NetworkInterface struct {
 	Name string
 }
 
-func (c *Proxmox) DescribeNode(ctx context.Context, node string) (*Node, error) {
-	nodeSummary, err := c.GetNode(ctx, node)
+func (c *Proxmox) DescribeNodes(ctx context.Context, nodeNames []string) ([]Node, error) {
+	nodeSummaries, err := c.ListNodes(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	disks, err := c.ListDisks(ctx, node)
-	if err != nil {
-		return nil, err
+	// return all if list is empty
+	if len(nodeNames) == 0 {
+		nodeNames = []string{}
+		for _, nodeSummary := range nodeSummaries {
+			nodeNames = append(nodeNames, nodeSummary.Node)
+		}
 	}
 
-	networkInterfaces, err := c.ListNetworkInterfaces(ctx, node)
-	if err != nil {
-		return nil, err
-	}
+	nodes := []Node{}
+	for _, nodeSummary := range nodeSummaries {
+		for _, nodeName := range nodeNames {
+			if nodeSummary.Node == nodeName {
+				disks, err := c.ListDisks(ctx, nodeSummary.Node)
+				if err != nil {
+					return nil, err
+				}
 
-	return &Node{
-		Node: nodeSummary.Node,
-		Cores: int(*nodeSummary.Maxcpu),
-		SslFingerprint: *nodeSummary.SslFingerprint,
-		Memory: int64(*nodeSummary.Maxmem),
-		DiskSpace: int64(*nodeSummary.Maxdisk),
-		Disks: disks,
-		NetworkInterfaces: networkInterfaces,
-	}, nil
+				networkInterfaces, err := c.ListNetworkInterfaces(ctx, nodeSummary.Node)
+				if err != nil {
+					return nil, err
+				}
+
+				n := Node{
+					Id: *nodeSummary.Id,
+					Node: nodeSummary.Node,
+					Cores: int(*nodeSummary.Maxcpu),
+					SslFingerprint: *nodeSummary.SslFingerprint,
+					Memory: int64(*nodeSummary.Maxmem),
+					DiskSpace: int64(*nodeSummary.Maxdisk),
+					Disks: disks,
+					NetworkInterfaces: networkInterfaces,
+				}
+				nodes = append(nodes, n)
+			}
+		}
+	}
+	return nodes, nil
 }
 
 func (c *Proxmox) GetNode(ctx context.Context, node string) (*proxmox.NodeSummary, error){

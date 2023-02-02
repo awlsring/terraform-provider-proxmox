@@ -1,1 +1,5 @@
 testing
+examples
+bin
+*.tfstate
+*.terraform
