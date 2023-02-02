@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/awlsring/proxmox-go/proxmox"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type Proxmox struct {
@@ -23,6 +24,7 @@ type ClientConfig struct {
 }
 
 func New(c ClientConfig) (*Proxmox, error) {
+	tflog.Debug(context.Background(), "Unrecognized API response body")
 	cfg := proxmox.NewConfiguration()
 	cfg.Servers[0] = proxmox.ServerConfiguration{
 		URL: fmt.Sprintf("%s/api2/json", c.Endpoint),

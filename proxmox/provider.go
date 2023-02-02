@@ -28,7 +28,7 @@ func Provider() *schema.Provider {
 			"api_key": {
 				Type:        schema.TypeString,
 				Description: "Proxmox API key",
-				Required:    true,
+				Optional:    true,
 				Sensitive:   true,
 				DefaultFunc: schema.EnvDefaultFunc("PROXMOX_API_KEY", nil),
 			},
@@ -38,11 +38,11 @@ func Provider() *schema.Provider {
 				Description: "Proxmox endpoint to connect with. Ex. https://10.0.0.2:8006",
 				DefaultFunc: schema.EnvDefaultFunc("PROXMOX_ENDPOINT", nil),
 			},
-			"skip_verify": {
+			"insecure": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Description: "Skip TLS verification. Defaults to true.",
-				DefaultFunc: schema.EnvDefaultFunc("PROXMOX_SKIP_VERIFY", true),
+				Default:    true,
 			},
 		},
 		DataSourcesMap: map[string]*schema.Resource{
@@ -70,7 +70,7 @@ func formConfig(d *schema.ResourceData) (service.ClientConfig, error){
 	password := d.Get("password").(string)
 	apiKey := d.Get("api_key").(string)
 	endpoint := d.Get("endpoint").(string)
-	skipVerify := d.Get("skip_verify").(bool)
+	skipVerify := d.Get("insecure").(bool)
 
 	if endpoint == "" {
 		return service.ClientConfig{}, fmt.Errorf("endpoint is required")
