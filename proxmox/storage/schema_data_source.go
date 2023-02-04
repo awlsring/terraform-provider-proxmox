@@ -1,27 +1,28 @@
-package templates
+package storage
 
 import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-var templateDataSource = map[string]*schema.Schema{
+var storageDataSource = map[string]*schema.Schema{
 	"id": {
 		Type:        schema.TypeInt,
 		Computed:    true,
-		Description: "The template id. Is a VM id.",
+		Description: "The storage identifier.",
 	},
-	"node": {
+	"type": {
 		Type:        schema.TypeString,
 		Computed:    true,
-		Description: "The template name.",
+		Description: "The type of storage device.",
 	},
-	"name": {
+	"nodes": {
+		Type:        schema.TypeList,
+		Computed:    true,
+		Description: "Nodes that host the storage pool.",
+		Elem: &schema.Schema{Type: schema.TypeString},
+	},
+	"digest": {
 		Type:        schema.TypeString,
 		Computed:    true,
-		Description: "The template name.",
-	},
-	"cores": {
-		Type:        schema.TypeInt,
-		Computed:    true,
-		Description: "configured cpu cores on the template",
+		Description: "The storage digest.",
 	},
 	"memory": {
 		Type:        schema.TypeInt,
@@ -32,14 +33,6 @@ var templateDataSource = map[string]*schema.Schema{
 		Type:        schema.TypeBool,
 		Computed:    true,
 		Description: "If the QEMU guest agent is enabled",
-	},
-	"tags": {
-		Type:        schema.TypeList,
-		Computed:    true,
-		Description: "List of tags on the template",
-		Elem: &schema.Schema{
-			Type: schema.TypeString,
-		},
 	},
 	"disks": {
 		Type:        schema.TypeList,

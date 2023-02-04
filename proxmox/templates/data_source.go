@@ -66,6 +66,7 @@ func flattenTemplates(templates []service.VirtualMachineTemplate) []map[string]i
 			"agent": template.Agent,
 			"cores": template.Cores,
 			"memory": template.Memory,
+			"tags": template.Tags,
 			"disks": flattenVirtualDisks(template.VirtualDisks),
 			"network_interfaces": flattenNetworkInterfaces(template.VirtualNetworkDevices),
 		})
