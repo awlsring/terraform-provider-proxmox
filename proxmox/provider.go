@@ -6,6 +6,7 @@ import (
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/nodes"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/templates"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -48,6 +49,7 @@ func Provider() *schema.Provider {
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"proxmox_nodes": nodes.DataSource(),
+			"proxmox_templates": templates.DataSource(),
 		},
         ConfigureContextFunc: providerConfigure,
     }

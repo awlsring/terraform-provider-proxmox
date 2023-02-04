@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	"github.com/awlsring/proxmox-go/proxmox"
 )
@@ -39,10 +40,10 @@ func (c *Proxmox) GetVirtualMachineConfiguration(ctx context.Context, node strin
 
 type VirtualMachineTemplate struct {
 	Id int
+	Agent bool
 	Node string
 	Name string
 	Memory int64
-	Bios VirtualBios
 	Cores int
 	VirtualDisks []VirtualDisk
 	VirtualNetworkDevices []VirtualNetworkDevice
@@ -66,6 +67,7 @@ type VirtualNetworkDevice struct {
 	Vlan int
 	Model VirtualNetworkDeviceModel
 	Mac string
+	Position string
 	FirewallEnabled bool
 }
 
@@ -138,12 +140,27 @@ func (c *Proxmox) DescribeTemplates(ctx context.Context, node string) ([]Virtual
 		virtualMachineTemplate := VirtualMachineTemplate{
 			Id: vmId,
 			Node: node,
-			Name: *templateSummary.Name,
-			Memory: int64(*vmConfig.Memory),
-			Bios: VirtualBios(*vmConfig.Bios),
-			Cores: int(*vmConfig.Cores),
 			VirtualDisks: virtualDisks,
 			VirtualNetworkDevices: virtualNics,
+		}
+
+		if templateSummary.HasName() {
+			virtualMachineTemplate.Name = *templateSummary.Name
+		}
+
+		if vmConfig.HasMemory() {
+			virtualMachineTemplate.Memory = int64(*vmConfig.Memory)
+		}
+
+		if vmConfig.HasCores() {
+			virtualMachineTemplate.Cores = int(*vmConfig.Cores)
+		}
+
+		if vmConfig.HasAgent() {
+			agentStr := *vmConfig.Agent
+			if strings.Contains(agentStr, "1") {
+				virtualMachineTemplate.Agent = true
+			}
 		}
 
 		virtualMachineTemplates = append(virtualMachineTemplates, virtualMachineTemplate)

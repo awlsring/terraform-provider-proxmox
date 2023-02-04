@@ -46,7 +46,7 @@ func extractDisksFromConfig(cfg *proxmox.VirtualMachineConfigurationSummary) ([]
 	return virtualDisks, nil
 }
 
-func loopDiskMap(m map[string]interface{}, key string, times int) ([]VirtualDisk, error) {
+func loopDiskMap(m map[string]interface{}, key VirtualDiskType, times int) ([]VirtualDisk, error) {
 	virtualDisks := []VirtualDisk{}
 	for i := 0; i < times; i++ {
 		d := fmt.Sprintf("%s%v", key, i)
@@ -57,6 +57,7 @@ func loopDiskMap(m map[string]interface{}, key string, times int) ([]VirtualDisk
 				return nil, err
 			}
 			disk.Position = d
+			disk.Type = key
 			virtualDisks = append(virtualDisks, disk)
 		} 
 	}
@@ -76,6 +77,12 @@ func parseDiskString(diskString string) (VirtualDisk, error) {
 
 	storage := strings.Split(storageStr, ":")
 	if len(storage) != 2 {
+		if len(storage) == 1 {
+			if storage[0] == "none" {
+				disk.Storage = storage[0]
+				return disk, nil
+			}
+		}
 		return disk, fmt.Errorf("invalid disk storage string: %s", storageStr)
 	}
 	disk.Storage = storage[0]
@@ -96,11 +103,6 @@ func parseDiskString(diskString string) (VirtualDisk, error) {
 			log.Warnf("unknown disk option: %s", key)
 		}
 	}
-
-	if disk.Size == 0 {
-		return disk, fmt.Errorf("disk size can't be 0")
-	}
-
 
 	return disk, nil
 }

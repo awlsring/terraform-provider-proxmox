@@ -91,7 +91,7 @@ func dataSourceNodeRead(ctx context.Context, d *schema.ResourceData, m interface
 
 func makeListId(d *schema.ResourceData) (string, error) {
 	idMap := map[string]interface{}{
-		"filter":   d.Get("filters"),
+		"filter":   d.Get("filter"),
 	}
 
 	result, err := json.Marshal(idMap)

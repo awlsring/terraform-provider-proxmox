@@ -39,15 +39,6 @@ func Test_extractDisksFromConfig_HandlesGaps(t *testing.T) {
 	}
 }
 
-func Test_extractDisksFromConfig_MissingSize(t *testing.T) {
-	cfg := &proxmox.VirtualMachineConfigurationSummary{
-		Scsi0: proxmox.PtrString("local-lvm:vm-100-disk-0"),
-	}
-	_, err := extractDisksFromConfig(cfg)
-	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "disk size can't be 0")
-}
-
 func Test_extractDisksFromConfig_MissingStorage(t *testing.T) {
 	cfg := &proxmox.VirtualMachineConfigurationSummary{
 		Scsi0: proxmox.PtrString("vm-100-disk-0,size=10G"),

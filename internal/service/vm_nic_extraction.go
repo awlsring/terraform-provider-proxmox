@@ -18,12 +18,13 @@ func extractNicsFromConfig(cfg *proxmox.VirtualMachineConfigurationSummary) ([]V
 
 	nics := []VirtualNetworkDevice{}
 	for i := 0; i < 8; i++ {
-		d := fmt.Sprintf("%s%v", "net", i)
-		if val, ok := cfgMap[d]; ok {
+		n := fmt.Sprintf("%s%v", "net", i)
+		if val, ok := cfgMap[n]; ok {
 			nic, err := parseNicString(val.(string))
 			if err != nil {
 				return nil, err
 			}
+			nic.Position = n
 			nics = append(nics, nic)
 		} 
 	}
