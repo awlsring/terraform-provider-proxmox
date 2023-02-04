@@ -76,15 +76,7 @@ var nodeDataSource = map[string]*schema.Schema{
 		Type:        schema.TypeList,
 		Computed:    true,
 		Description: "List of physical network interfaces on the machine.",
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"name": {
-					Type:        schema.TypeString,
-					Computed:    true,
-					Description: "The interface name.",
-				},
-			},
-			Description: "A physical network interface on the machine.",
-		},
+		Elem: &schema.Schema{Type: schema.TypeString},
+
 	},
 }

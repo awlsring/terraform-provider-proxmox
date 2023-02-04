@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/filter"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -15,13 +15,13 @@ func dataSourceTemplate() *schema.Resource {
 	}
 }
 
-var filters = filter.FilterConfig{"node"}
+var filter = filters.FilterConfig{"node"}
 
 func DataSource() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceTemplateRead,
 		Schema: map[string]*schema.Schema{
-			"filter": filters.Schema(),
+			"filter": filter.Schema(),
 			"templates": {
 				Type:        schema.TypeList,
 				Description: "The returned list of templates.",
@@ -35,42 +35,11 @@ func DataSource() *schema.Resource {
 func dataSourceTemplateRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := m.(*service.Proxmox)
-	filterId, err := filter.MakeListId(d)
+	filterId, err := filters.MakeListId(d)
 	if err != nil {
 		return diag.Errorf("failed to generate filter id: %s", err)
 	}
-
-	// there is probably a prettier way to do this
-	nodes := []string{}
-	filters := d.Get("filter")
-	for _, filter := range filters.([]interface{}) {
-		if filter == nil {
-			continue
-		}
-		f := filter.(map[string]interface{})
-		if f["name"] == nil {
-			continue
-		}
-		name := f["name"].(string)
-		switch name {
-		case "node":
-			if f["value"] == nil {
-				continue
-			}
-			nodes = append(nodes, f["value"].(string))
-		}
-	}
-
-	// If no nodes are specified, list all nodes and find templates on all
-	if len(nodes) == 0 {
-		nodeSummaries, err := client.ListNodes(context.Background())
-		if err != nil {
-			return diag.Errorf("failed to list nodes: %s", err)
-		}
-		for _, nodeSummary := range nodeSummaries {
-			nodes = append(nodes, nodeSummary.Node)
-		}
-	}
+	nodes := filters.DetermineNodes(client, d)
 
 	templates := []service.VirtualMachineTemplate{}
 	for _, node := range nodes {

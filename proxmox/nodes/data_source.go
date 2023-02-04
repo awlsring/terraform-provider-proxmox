@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"golang.org/x/crypto/sha3"
@@ -20,28 +20,13 @@ func dataSourceNode() *schema.Resource {
 	}
 }
 
+var filter = filters.FilterConfig{"node"}
+
 func DataSource() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceNodeRead,
 		Schema: map[string]*schema.Schema{
-			"filter": {
-				Type:        schema.TypeList,
-				Optional:    true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"name": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Description: "Name of node to find.",
-						},
-						"ip": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Description: "IP of a node to find.",
-						},
-					},
-				},
-			},
+			"filter": filter.Schema(),
 			"nodes": {
 				Type:        schema.TypeList,
 				Description: "The returned list of nodes.",
@@ -61,30 +46,19 @@ func dataSourceNodeRead(ctx context.Context, d *schema.ResourceData, m interface
 	if err != nil {
 		return diag.Errorf("failed to generate filter id: %s", err)
 	}
+	nodes := filters.DetermineNodes(client, d)
 
-	names := []string{}
-
-	filters := d.Get("filter")
-	for _, filter := range filters.([]interface{}) {
-		if filter == nil {
-			continue
+	nodeSummaries := []service.Node{}
+	for _, node := range nodes {
+		node, err := client.DescribeNode(ctx, node)
+		if err != nil {
+			return diag.FromErr(err)
 		}
-		f := filter.(map[string]interface{})
-		if f["name"] == nil {
-			continue
-		}
-		name := f["name"].(string)
-		names = append(names, name)
-	}
-	
-	fmt.Println("names: ", names)
-	nodes, err := client.DescribeNodes(ctx, names)
-	if err != nil {
-		return diag.FromErr(err)
+		nodeSummaries = append(nodeSummaries, node)
 	}
 
 	d.SetId(filterId)
-	d.Set("nodes", flattenNodes(nodes))
+	d.Set("nodes", flattenNodes(nodeSummaries))
 
 	return diags
 }
@@ -136,12 +110,10 @@ func flattenDisk(disk []service.Disk) []interface{} {
 	return disks
 }
 
-func flattenNetworkInterfaces(networkInterface []service.NetworkInterface) []interface{} {
-	var networkInterfaces []interface{}
+func flattenNetworkInterfaces(networkInterface []service.NetworkInterface) []string {
+	var networkInterfaces []string
 	for _, networkInterface := range networkInterface {
-		networkInterfaces = append(networkInterfaces, map[string]interface{}{
-			"name": networkInterface.Name,
-		})
+		networkInterfaces = append(networkInterfaces, networkInterface.Name)
 	}
 	return networkInterfaces
 }
