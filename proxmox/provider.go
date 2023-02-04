@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/bonds"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/bridges"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/nodes"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/templates"
@@ -52,6 +53,7 @@ func Provider() *schema.Provider {
 			"proxmox_nodes": nodes.DataSource(),
 			"proxmox_templates": templates.DataSource(),
 			"proxmox_network_bridges": bridges.DataSource(),
+			"proxmox_network_bonds": bonds.DataSource(),
 		},
         ConfigureContextFunc: providerConfigure,
     }

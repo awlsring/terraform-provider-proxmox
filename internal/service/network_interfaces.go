@@ -29,6 +29,17 @@ type NetworkBridge struct {
 	IPv6 *NetworkInterfaceIpv6
 }
 
+type NetworkBond struct {
+	Active bool
+	Autostart bool
+	HashPolicy proxmox.NetworkInterfaceBondHashPolicy
+	Mode proxmox.NetworkInterfaceBondMode
+	MiiMon string
+	Interfaces []string
+	Name string
+	Node string
+}
+
 func (c *Proxmox) DescribeNetworkBridges(ctx context.Context, node string) ([]NetworkBridge, error) {
 	bridges, err := c.ListNetworkBridges(ctx, node)
 	if err != nil {
@@ -52,9 +63,50 @@ func (c *Proxmox) DescribeNetworkBridges(ctx context.Context, node string) ([]Ne
 	return networkBridges, nil
 }
 
+func (c *Proxmox) DescribeNetworkBonds(ctx context.Context, node string) ([]NetworkBond, error) {
+	bonds, err := c.ListNetworkBonds(ctx, node)
+	if err != nil {
+		return nil, err
+	}
+
+	networkBonds := []NetworkBond{}
+	for _, bridge := range bonds {
+		iface := NetworkBond{
+			Active: BooleanIntegerConversion(bridge.Active),
+			Autostart: BooleanIntegerConversion(bridge.Autostart),
+			Interfaces: StringSpacePtrListToSlice(bridge.Slaves),
+			MiiMon: PtrStringToString(bridge.BondMiimon),
+			Name: bridge.Iface,
+			Node: node,
+		}
+
+		if bridge.HasBondXmitHashPolicy() {
+			iface.HashPolicy = *bridge.BondXmitHashPolicy
+		}
+
+		if bridge.HasBondMode() {
+			iface.Mode = *bridge.BondMode
+		}
+
+		networkBonds = append(networkBonds, iface)
+	}
+	return networkBonds, nil
+}
+
 func (c *Proxmox) ListNetworkBridges(ctx context.Context, node string) ([]proxmox.NetworkInterfaceSummary, error) {
 	request := c.client.ListNetworkInterfaces(ctx, node)
 	request = request.Type_("bridge")
+	resp, _, err := c.client.ListNetworkInterfacesExecute(request)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Data, nil
+}
+
+func (c *Proxmox) ListNetworkBonds(ctx context.Context, node string) ([]proxmox.NetworkInterfaceSummary, error) {
+	request := c.client.ListNetworkInterfaces(ctx, node)
+	request = request.Type_("bond")
 	resp, _, err := c.client.ListNetworkInterfacesExecute(request)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,8 @@
 package service
 
-import "strings"
+import (
+	"strings"
+)
 
 func IntToBool(i int) bool {
 	return i != 0
@@ -25,4 +27,18 @@ func StringSpacePtrListToSlice(s *string) []string {
 		return []string{}
 	}
 	return StringSpaceListToSlice(*s)
+}
+
+func PtrStringToString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func PtrIntToInt(i *int) int {
+	if i == nil {
+		return 0
+	}
+	return *i
 }

@@ -25,7 +25,7 @@ func DataSource() *schema.Resource {
 			"filter": filter.Schema(),
 			"network_bridges": {
 				Type:        schema.TypeList,
-				Description: "The returned list of ntework bridges.",
+				Description: "The returned list of network bridges.",
 				Computed:    true,
 				Elem:        dataSourceBridge(),
 			},
