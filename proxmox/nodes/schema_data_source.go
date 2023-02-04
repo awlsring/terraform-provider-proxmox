@@ -77,6 +77,5 @@ var nodeDataSource = map[string]*schema.Schema{
 		Computed:    true,
 		Description: "List of physical network interfaces on the machine.",
 		Elem: &schema.Schema{Type: schema.TypeString},
-
 	},
 }

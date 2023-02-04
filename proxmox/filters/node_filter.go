@@ -2,8 +2,6 @@ package filters
 
 import (
 	"context"
-	"encoding/json"
-	"io/ioutil"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -12,9 +10,6 @@ import (
 func DetermineNodes(client *service.Proxmox, d *schema.ResourceData) []string {
 	nodes := []string{}
 	filters := d.Get("filter")
-
-	j, _ := json.Marshal(filters)
-	ioutil.WriteFile("filter.json", j, 0644)
 
 	for _, filter := range filters.([]interface{}) {
 		if filter == nil {
