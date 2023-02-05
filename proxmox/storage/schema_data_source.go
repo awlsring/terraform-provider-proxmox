@@ -4,108 +4,46 @@ import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 var storageDataSource = map[string]*schema.Schema{
 	"id": {
-		Type:        schema.TypeInt,
+		Type:        schema.TypeString,
 		Computed:    true,
 		Description: "The storage identifier.",
 	},
-	"type": {
-		Type:        schema.TypeString,
-		Computed:    true,
-		Description: "The type of storage device.",
-	},
-	"nodes": {
+	"shared_nodes": {
 		Type:        schema.TypeList,
+		Computed:    true,
+		Description: "The nodes this storage is shared with.",
+		Elem: &schema.Schema{Type: schema.TypeString},
+	},
+	"shared": {
+		Type:        schema.TypeBool,
 		Computed:    true,
 		Description: "Nodes that host the storage pool.",
 		Elem: &schema.Schema{Type: schema.TypeString},
 	},
-	"digest": {
-		Type:        schema.TypeString,
-		Computed:    true,
-		Description: "The storage digest.",
-	},
-	"memory": {
-		Type:        schema.TypeInt,
-		Computed:    true,
-		Description: "configured memory on the template",
-	},
-	"agent": {
+	"local": {
 		Type:        schema.TypeBool,
 		Computed:    true,
-		Description: "If the QEMU guest agent is enabled",
+		Description: "If this is local storage.",
 	},
-	"disks": {
+	"size": {
+		Type:        schema.TypeInt,
+		Computed:    true,
+		Description: "Total size available in bytes.",
+	},
+	"type": {
+		Type:        schema.TypeString,
+		Computed:    true,
+		Description: "The type of storage.",
+	},
+	"content": {
 		Type:        schema.TypeList,
 		Computed:    true,
-		Description: "List of virtual disks on the machine",
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"storage": {
-					Type:        schema.TypeString,
-					Computed:    true,
-					Description: "The storage device the volume is mounted on.",
-				},
-				"type": {
-					Type:        schema.TypeString,
-					Computed:    true,
-					Description: "The type of disk (scsi, virtio, ide, sata).",
-				},
-				"position": {
-					Type:        schema.TypeString,
-					Computed:   true,
-					Description: "Connection position on the virtual machine (ex. virito0).",
-				},
-				"size": {
-					Type:        schema.TypeInt,
-					Computed:   true,
-					Description: "Space allocated to the disk in bytes.",
-				},
-				"discard": {
-					Type:        schema.TypeBool,
-					Computed:   true,
-					Description: "If discard in enabled.",
-				},
-			},
-		},
+		Description: "The content type supported by this storage.",
+		Elem: &schema.Schema{Type: schema.TypeString},
 	},
-	"network_interfaces": {
-		Type:        schema.TypeList,
+	"source": {
+		Type:        schema.TypeString,
 		Computed:    true,
-		Description: "List of virtual network interfaces on the machine.",
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"bridge": {
-					Type:        schema.TypeString,
-					Computed:    true,
-					Description: "Bridge the virtual device will run on.",
-				},
-				"vlan": {
-					Type:        schema.TypeInt,
-					Computed:    true,
-					Description: "The vlan the nic will operate in.",
-				},
-				"model": {
-					Type:        schema.TypeString,
-					Computed:    true,
-					Description: "Interface model the nic emulates.",
-				},
-				"mac": {
-					Type:        schema.TypeString,
-					Computed:    true,
-					Description: "Mac address of the interface.",
-				},
-				"position": {
-					Type:        schema.TypeString,
-					Computed:    true,
-					Description: "Position of the interface on the virtual machine.",
-				},
-				"firewall": {
-					Type:        schema.TypeBool,
-					Computed:    true,
-					Description: "If firewall is enabled for virtual machine.",
-				},
-			},
-			Description: "A virtual network interface on the machine.",
-		},
+		Description: "The source of the space used by storage.",
 	},
 }

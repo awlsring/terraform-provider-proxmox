@@ -29,6 +29,20 @@ func StringSpacePtrListToSlice(s *string) []string {
 	return StringSpaceListToSlice(*s)
 }
 
+func StringCommaListToSlice(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+	return strings.Split(s, ",")
+}
+
+func StringCommaPtrListToSlice(s *string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return StringCommaListToSlice(*s)
+}
+
 func PtrStringToString(s *string) string {
 	if s == nil {
 		return ""
@@ -41,4 +55,11 @@ func PtrIntToInt(i *int) int {
 		return 0
 	}
 	return *i
+}
+
+func PtrFloatToInt64(i *float32) int64 {
+	if i == nil {
+		return 0
+	}
+	return int64(*i)
 }
