@@ -8,6 +8,7 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/bonds"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/bridges"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/nodes"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/pools"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/templates"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -54,6 +55,7 @@ func Provider() *schema.Provider {
 			"proxmox_templates": templates.DataSource(),
 			"proxmox_network_bridges": bridges.DataSource(),
 			"proxmox_network_bonds": bonds.DataSource(),
+			"proxmox_pools": pools.DataSource(),
 		},
         ConfigureContextFunc: providerConfigure,
     }
