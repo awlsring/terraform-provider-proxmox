@@ -1,4 +1,4 @@
-package service
+package vm
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 )
 
 
-func extractNicsFromConfig(cfg *proxmox.VirtualMachineConfigurationSummary) ([]VirtualNetworkDevice, error) {
+func ExtractNicsFromConfig(cfg *proxmox.VirtualMachineConfigurationSummary) ([]VirtualNetworkDevice, error) {
 	var cfgMap map[string]interface{}
     inrec, _ := json.Marshal(cfg)
     json.Unmarshal(inrec, &cfgMap)

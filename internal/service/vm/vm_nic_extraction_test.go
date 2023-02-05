@@ -1,4 +1,4 @@
-package service
+package vm
 
 import (
 	"testing"
@@ -26,14 +26,14 @@ func Test_parseNicString_BadModel(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid model: bad")
 }
 
-func Test_extractNicsFromConfig_Success(t *testing.T) {
+func Test_ExtractNicsFromConfig_Success(t *testing.T) {
 	cfg := &proxmox.VirtualMachineConfigurationSummary{
 		Net0: proxmox.PtrString("virtio=52:54:00:4A:4B:4C,bridge=vmbr0,firewall=1,tag=10"),
 		Net1: proxmox.PtrString("virtio=52:54:00:4A:4B:3C,bridge=vmbr0,firewall=1,tag=10"),
 		Net2: proxmox.PtrString("virtio=52:54:00:4A:4B:2C,bridge=vmbr0,firewall=1,tag=10"),
 	}
 
-	parsedNics, err := extractNicsFromConfig(cfg)
+	parsedNics, err := ExtractNicsFromConfig(cfg)
 	assert.Nil(t, err)
 	assert.Len(t, parsedNics, 3)
 
@@ -46,14 +46,14 @@ func Test_extractNicsFromConfig_Success(t *testing.T) {
 	}
 }
 
-func Test_extractNicsFromConfig_HandlesGaps(t *testing.T) {
+func Test_ExtractNicsFromConfig_HandlesGaps(t *testing.T) {
 	cfg := &proxmox.VirtualMachineConfigurationSummary{
 		Net0: proxmox.PtrString("virtio=52:54:00:4A:4B:4C,bridge=vmbr0,firewall=1,tag=10"),
 		Net5: proxmox.PtrString("virtio=52:54:00:4A:4B:3C,bridge=vmbr0,firewall=1,tag=10"),
 		Net7: proxmox.PtrString("virtio=52:54:00:4A:4B:2C,bridge=vmbr0,firewall=1,tag=10"),
 	}
 
-	parsedNics, err := extractNicsFromConfig(cfg)
+	parsedNics, err := ExtractNicsFromConfig(cfg)
 	assert.Nil(t, err)
 	assert.Len(t, parsedNics, 3)
 
@@ -66,7 +66,7 @@ func Test_extractNicsFromConfig_HandlesGaps(t *testing.T) {
 	}
 }
 
-func Test_extractNicsFromConfig_AllTypes(t *testing.T) {
+func Test_ExtractNicsFromConfig_AllTypes(t *testing.T) {
 	cfg := &proxmox.VirtualMachineConfigurationSummary{
 		Net0: proxmox.PtrString("virtio=52:54:00:4A:4B:4C,bridge=vmbr0,firewall=1,tag=10"),
 		Net2: proxmox.PtrString("e1000=52:54:00:4A:4B:3C,bridge=vmbr0,firewall=1,tag=10"),
@@ -74,7 +74,7 @@ func Test_extractNicsFromConfig_AllTypes(t *testing.T) {
 		Net4: proxmox.PtrString("vmxnet3=52:54:00:4A:4B:1C,bridge=vmbr0,firewall=1,tag=10"),
 	}
 
-	parsedNics, err := extractNicsFromConfig(cfg)
+	parsedNics, err := ExtractNicsFromConfig(cfg)
 	assert.Nil(t, err)
 	assert.Len(t, parsedNics, 4)
 

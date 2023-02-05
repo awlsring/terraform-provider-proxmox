@@ -1,4 +1,4 @@
-package service
+package vm
 
 import (
 	"encoding/json"
@@ -12,7 +12,7 @@ import (
 
 // doing some janky stuff here to get the disks out of the config
 // refator this later to use go routines
-func extractDisksFromConfig(cfg *proxmox.VirtualMachineConfigurationSummary) ([]VirtualDisk, error) {
+func ExtractDisksFromConfig(cfg *proxmox.VirtualMachineConfigurationSummary) ([]VirtualDisk, error) {
 	virtualDisks := []VirtualDisk{}
 	
 	var cfgMap map[string]interface{}

@@ -11,6 +11,7 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/pools"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/storage"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/templates"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/vms"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -54,6 +55,7 @@ func Provider() *schema.Provider {
 		DataSourcesMap: map[string]*schema.Resource{
 			"proxmox_nodes": nodes.DataSource(),
 			"proxmox_templates": templates.DataSource(),
+			"proxmox_virtual_machines": vms.DataSource(),
 			"proxmox_network_bridges": bridges.DataSource(),
 			"proxmox_network_bonds": bonds.DataSource(),
 			"proxmox_pools": pools.DataSource(),

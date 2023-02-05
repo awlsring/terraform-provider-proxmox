@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
+	"github.com/awlsring/terraform-provider-proxmox/internal/service/vm"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/vms"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -41,7 +43,7 @@ func dataSourceTemplateRead(ctx context.Context, d *schema.ResourceData, m inter
 	}
 	nodes := filters.DetermineNodes(client, d)
 
-	templates := []service.VirtualMachineTemplate{}
+	templates := []vm.VirtualMachine{}
 	for _, node := range nodes {
 		t, err := client.DescribeTemplates(ctx, node)
 		if err != nil {
@@ -51,54 +53,7 @@ func dataSourceTemplateRead(ctx context.Context, d *schema.ResourceData, m inter
 	}
 
 	d.SetId(filterId)
-	d.Set("templates", flattenTemplates(templates))
+	d.Set("templates", vms.FlattenVirtualMachines(templates))
 	
 	return diags
-}
-
-func flattenTemplates(templates []service.VirtualMachineTemplate) []map[string]interface{} {
-	var result []map[string]interface{}
-	for _, template := range templates {
-		result = append(result, map[string]interface{}{
-			"id": template.Id,
-			"node": template.Node,
-			"name": template.Name,
-			"agent": template.Agent,
-			"cores": template.Cores,
-			"memory": template.Memory,
-			"tags": template.Tags,
-			"disks": flattenVirtualDisks(template.VirtualDisks),
-			"network_interfaces": flattenNetworkInterfaces(template.VirtualNetworkDevices),
-		})
-	}
-	return result
-}
-
-func flattenVirtualDisks(disks []service.VirtualDisk) []interface{} {
-	var result []interface{}
-	for _, disk := range disks {
-		result = append(result, map[string]interface{}{
-			"storage": disk.Storage,
-			"type":  disk.Type,
-			"position":  disk.Position,
-			"size":    disk.Size,
-			"discard":  disk.Discard,
-		})
-	}
-	return result
-}
-
-func flattenNetworkInterfaces(networkInterfaces []service.VirtualNetworkDevice) []interface{} {
-	var result []interface{}
-	for _, networkInterface := range networkInterfaces {
-		result = append(result, map[string]interface{}{
-			"bridge": networkInterface.Bridge,
-			"vlan":  networkInterface.Vlan,
-			"model":  networkInterface.Model,
-			"mac":  networkInterface.Mac,
-			"position":  networkInterface.Position,
-			"firewall":  networkInterface.FirewallEnabled,
-		})
-	}
-	return result
 }
