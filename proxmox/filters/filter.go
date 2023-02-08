@@ -1,49 +1,37 @@
 package filters
 
 import (
-	"encoding/base64"
-	"encoding/json"
-
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"golang.org/x/crypto/sha3"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+type FilterModel struct {
+	Name   types.String   `tfsdk:"name"`
+	Values []types.String `tfsdk:"values"`
+}
 
 type FilterConfig []string
 
-func (f *FilterConfig) Schema() *schema.Schema {
-	return &schema.Schema{
-		Type:     schema.TypeList,
+func (f *FilterConfig) Schema() *schema.ListNestedAttribute {
+	return &schema.ListNestedAttribute{
 		Optional: true,
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"name": {
-					Type:             schema.TypeString,
-					Description:      "The name of the attribute to filter on.",
-					ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(*f, false)),
-					Required:         true,
-				},
-				"values": {
-					Type:        schema.TypeList,
-					Elem:        &schema.Schema{Type: schema.TypeString},
-					Description: "The value(s) to be used in the filter.",
+		NestedObject: schema.NestedAttributeObject{
+			Attributes: map[string]schema.Attribute{
+				"name": schema.StringAttribute{
 					Required:    true,
+					Description: "The name of the attribute to filter on.",
+					Validators: []validator.String{
+						stringvalidator.OneOf(*f...),
+					},
+				},
+				"values": schema.ListAttribute{
+					Required:    true,
+					Description: "The value(s) to be used in the filter.",
+					ElementType: types.StringType,
 				},
 			},
 		},
 	}
-}
-
-func MakeListId(d *schema.ResourceData) (string, error) {
-	idMap := map[string]interface{}{
-		"filter":   d.Get("filter"),
-	}
-
-	result, err := json.Marshal(idMap)
-	if err != nil {
-		return "", err
-	}
-
-	hash := sha3.Sum512(result)
-	return base64.StdEncoding.EncodeToString(hash[:]), nil
 }

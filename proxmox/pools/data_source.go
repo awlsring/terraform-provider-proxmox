@@ -5,71 +5,129 @@ import (
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func dataSourcePools() *schema.Resource {
-	return &schema.Resource{
-		Schema: poolDataSource,
+var (
+	_ datasource.DataSource              = &poolsDataSource{}
+	_ datasource.DataSourceWithConfigure = &poolsDataSource{}
+)
+
+func NewDataSource() datasource.DataSource {
+	return &poolsDataSource{}
+}
+
+type poolsDataSource struct {
+	client *service.Proxmox
+}
+
+type poolsDataSourceModel struct {
+	Pools   []poolModel           `tfsdk:"pools"`
+	Filters []filters.FilterModel `tfsdk:"filters"`
+}
+
+type poolModel struct {
+	ID      types.String      `tfsdk:"id"`
+	Comment types.String      `tfsdk:"comment"`
+	Members []poolMemberModel `tfsdk:"members"`
+}
+
+type poolMemberModel struct {
+	ID   types.String `tfsdk:"id"`
+	Type types.String `tfsdk:"type"`
+}
+
+func (d *poolsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_pools"
+}
+
+func (d *poolsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
 	}
+
+	d.client = req.ProviderData.(*service.Proxmox)
 }
 
 var filter = filters.FilterConfig{}
 
-func DataSource() *schema.Resource {
-	return &schema.Resource{
-		ReadContext: dataSourcePoolsRead,
-		Schema: map[string]*schema.Schema{
-			"filter": filter.Schema(),
-			"pools": {
-				Type:        schema.TypeList,
-				Description: "The returned list of pools.",
-				Computed:    true,
-				Elem:        dataSourcePools(),
+func (d *poolsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"filters": filter.Schema(),
+			"pools": schema.ListNestedAttribute{
+				Computed: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"id": schema.StringAttribute{
+							Computed:    true,
+							Description: "The id of the bridge. Formatted as /{node}/{name}.",
+						},
+						"comment": schema.StringAttribute{
+							Computed:    true,
+							Description: "Notes on the pool.",
+						},
+						"members": schema.ListNestedAttribute{
+							Computed:    true,
+							Description: "Resources that are part of the pool.",
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"id": schema.StringAttribute{
+										Computed:    true,
+										Description: "The id of the resource.",
+									},
+									"type": schema.StringAttribute{
+										Computed:    true,
+										Description: "The type of the resource.",
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	}
 }
 
-func dataSourcePoolsRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-	client := m.(*service.Proxmox)
-	filterId, err := filters.MakeListId(d)
-	if err != nil {
-		return diag.Errorf("failed to generate filter id: %s", err)
+func (d *poolsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var state poolsDataSourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
-	pools, err := client.DescribePools(ctx)
+	pools, err := d.client.DescribePools(ctx)
 	if err != nil {
-		return diag.Errorf("failed to describe pools: %s", err)
+		resp.Diagnostics.AddError(
+			"Unable to get pools",
+			"An error was encountered retrieving pools.\n"+
+				err.Error(),
+		)
+		return
 	}
 
-	d.SetId(filterId)
-	d.Set("pools", flattenPools(pools))
-
-	return diags
-}
-
-func flattenPools(pools []service.Pool) []map[string]interface{} {
-	var result []map[string]interface{}
 	for _, pool := range pools {
-		result = append(result, map[string]interface{}{
-			"id":   pool.Id,
-			"comment": pool.Comment,
-			"members": flattenMembers(pool.Members),
-		})
-	}
-	return result
-}
+		statePool := poolModel{
+			ID:      types.StringValue(pool.Id),
+			Comment: types.StringValue(pool.Comment),
+		}
 
-func flattenMembers(members []service.PoolMember) []map[string]interface{} {
-	var result []map[string]interface{}
-	for _, member := range members {
-		result = append(result, map[string]interface{}{
-			"id":   member.Id,
-			"type": member.Type,
-		})
+		for _, member := range pool.Members {
+			statePool.Members = append(statePool.Members, poolMemberModel{
+				ID:   types.StringValue(member.Id),
+				Type: types.StringValue(string(member.Type)),
+			})
+		}
+
+		state.Pools = append(state.Pools, statePool)
 	}
-	return result
+
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }

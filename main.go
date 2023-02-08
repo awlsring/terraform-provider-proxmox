@@ -1,17 +1,20 @@
 package main
 
 import (
+	"context"
+	"log"
+
 	"github.com/awlsring/terraform-provider-proxmox/proxmox"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 
-//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
-
+//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate
 func main() {
-	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: func() *schema.Provider {
-				return proxmox.Provider()
-		},
+	err := providerserver.Serve(context.Background(), proxmox.New, providerserver.ServeOpts{
+		Address: "tmp.terraform.io/awlsring/proxmox",
 	})
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 }
