@@ -8,6 +8,7 @@ import (
 	"github.com/awlsring/proxmox-go/proxmox"
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -15,8 +16,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &poolResource{}
-	_ resource.ResourceWithConfigure = &poolResource{}
+	_ resource.Resource                = &poolResource{}
+	_ resource.ResourceWithConfigure   = &poolResource{}
+	_ resource.ResourceWithImportState = &poolResource{}
 )
 
 func NewResource() resource.Resource {
@@ -83,6 +85,13 @@ func (r *poolResource) Create(ctx context.Context, req resource.CreateRequest, r
 		PoolId:  plan.ID.ValueString(),
 		Comment: utils.OptionalToPointerString(plan.Comment.ValueString()),
 	})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error creating pool",
+			"Could not create pool, unexpected error: "+err.Error(),
+		)
+		return
+	}
 
 	if len(plan.Members) != 0 {
 		vms := []string{}
@@ -128,6 +137,7 @@ func (r *poolResource) Create(ctx context.Context, req resource.CreateRequest, r
 }
 
 func (r *poolResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	tflog.Debug(ctx, "Read pool method")
 	var state poolModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -303,4 +313,8 @@ func (r *poolResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		)
 		return
 	}
+}
+
+func (r *poolResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
