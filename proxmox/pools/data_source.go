@@ -23,22 +23,6 @@ type poolsDataSource struct {
 	client *service.Proxmox
 }
 
-type poolsDataSourceModel struct {
-	Pools   []poolModel           `tfsdk:"pools"`
-	Filters []filters.FilterModel `tfsdk:"filters"`
-}
-
-type poolModel struct {
-	ID      types.String      `tfsdk:"id"`
-	Comment types.String      `tfsdk:"comment"`
-	Members []poolMemberModel `tfsdk:"members"`
-}
-
-type poolMemberModel struct {
-	ID   types.String `tfsdk:"id"`
-	Type types.String `tfsdk:"type"`
-}
-
 func (d *poolsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_pools"
 }
@@ -63,7 +47,7 @@ func (d *poolsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
 							Computed:    true,
-							Description: "The id of the bridge. Formatted as /{node}/{name}.",
+							Description: "The id of the pool.",
 						},
 						"comment": schema.StringAttribute{
 							Computed:    true,

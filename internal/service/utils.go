@@ -36,6 +36,10 @@ func StringCommaListToSlice(s string) []string {
 	return strings.Split(s, ",")
 }
 
+func SliceToStringCommaList(s []string) string {
+	return strings.Join(s, ",")
+}
+
 func StringSemiColonListToSlice(s string) []string {
 	if s == "" {
 		return []string{}
