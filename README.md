@@ -1,14 +1,38 @@
-# Terraform Proxmox
+# Terraform Proxmox Provider
 
-## Dev
+This is a Terraform provider for Proxmox. The API calls made in this repository are done using a generated go client from a [Smithy Proxmox Model](https://github.com/awlsring/ProxmoxModel)
 
-Enable logging
+Currently this is very early in development and isn't suitable for use yet. Many things may change.
 
-```shell
-export TF_LOG=DEBUG
-```
+## Currently supported resources:
 
-Store logs
-```shell
-TF_LOG=TRACE TF_LOG_PATH=trace.txt terraform plan
-```
+#### Data source
+
+* Resource pools
+* Network bridges
+* Network bonds
+* Nodes
+* Virtual Machines
+* Templates
+* Storage
+
+#### Resource
+
+* Resource pool
+
+## Planned resources
+
+### Data source
+
+* Realms
+* Users
+* Groups
+
+### Resource
+
+* Network bridge
+* Network bond
+* Virtual Machine
+* Storage
+* User
+* Group
