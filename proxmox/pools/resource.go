@@ -145,7 +145,7 @@ func (r *poolResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	pool, err := r.client.GetPool(ctx, state.ID.ValueString())
+	poolModel, err := r.readPoolModel(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading pool",
@@ -154,9 +154,26 @@ func (r *poolResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	state.Comment = types.StringValue(utils.PtrStringToString(pool.Comment))
+	diags = resp.State.Set(ctx, &poolModel)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
 
-	state.Members = make([]poolMemberModel, len(pool.Members))
+func (r *poolResource) readPoolModel(ctx context.Context, id string) (poolModel, error) {
+	model := poolModel{
+		ID: types.StringValue(id),
+	}
+
+	pool, err := r.client.GetPool(ctx, id)
+	if err != nil {
+		return poolModel{}, err
+	}
+
+	model.Comment = types.StringValue(utils.PtrStringToString(pool.Comment))
+
+	model.Members = make([]poolMemberModel, len(pool.Members))
 	for i, member := range pool.Members {
 		var id string
 		t := member.Type
@@ -168,11 +185,13 @@ func (r *poolResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 			id = member.Id
 		}
 
-		state.Members[i] = poolMemberModel{
+		model.Members[i] = poolMemberModel{
 			ID:   types.StringValue(id),
 			Type: types.StringValue(string(t)),
 		}
 	}
+
+	return model, nil
 }
 
 func (r *poolResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -202,7 +221,7 @@ func (r *poolResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	// Add members
 	if len(newMembers) > 0 {
 		tflog.Debug(ctx, "Adding members to pool")
-		err := r.changePoolMembers(ctx, plan.ID.ValueString(), comment, newMembers, true)
+		err := r.changePoolMembers(ctx, plan.ID.ValueString(), comment, newMembers, false)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error updating pool",
@@ -317,4 +336,19 @@ func (r *poolResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 
 func (r *poolResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	id := req.ID
+	model, err := r.readPoolModel(ctx, id)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading pool",
+			"Could not read pool, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	diags := resp.State.Set(ctx, model)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
