@@ -37,14 +37,16 @@ Required:
 
 Read-Only:
 
-- `active` (Boolean) If the bridge is active.
-- `autostart` (Boolean) If the bridge is set to autostart.
+- `active` (Boolean) If the bond is active.
+- `autostart` (Boolean) If the bond is set to autostart.
+- `bond_primary` (String) Primary interface on the bond.
+- `comments` (String) Comments on the bond.
 - `hash_policy` (String) Hash policy used on the bond.
-- `id` (String) The id of the bridge. Formatted as /{node}/{name}.
-- `interfaces` (List of String) List of interfaces on the bridge.
+- `id` (String) The id of the bond. Formatted as `/{node}/{name}`.
+- `interfaces` (List of String) List of interfaces on the bond.
 - `mii_mon` (String) Miimon of the bond.
 - `mode` (String) Mode of the bond.
-- `name` (String) The name of the bridge.
-- `node` (String) The node the bridge is on.
+- `name` (String) The name of the bond.
+- `node` (String) The node the bond is on.
 
 

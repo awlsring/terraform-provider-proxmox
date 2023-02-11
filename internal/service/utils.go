@@ -29,6 +29,14 @@ func StringSpacePtrListToSlice(s *string) []string {
 	return StringSpaceListToSlice(*s)
 }
 
+func StringSliceToStringSpacePtr(l []string) *string {
+	if len(l) == 0 {
+		return nil
+	}
+	s := strings.Join(l, " ")
+	return &s
+}
+
 func StringCommaListToSlice(s string) []string {
 	if s == "" {
 		return []string{}

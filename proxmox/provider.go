@@ -179,6 +179,7 @@ func (p *ProxmoxProvider) Configure(ctx context.Context, req provider.ConfigureR
 func (p *ProxmoxProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		pools.NewResource,
+		bonds.NewResource,
 	}
 }
 

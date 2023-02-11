@@ -15,12 +15,29 @@ func OptionalToPointerString(s string) *string {
 	return &s
 }
 
+func OptionalToPointerBool(b bool) *bool {
+	if !b {
+		return nil
+	}
+
+	return &b
+}
+
 func PtrStringToString(s *string) string {
 	if s == nil {
 		return ""
 	}
 
 	return *s
+}
+
+func Contains(s []int, e int) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 func LoadPlanAndState(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse, plan any, state any) (any, any, error) {

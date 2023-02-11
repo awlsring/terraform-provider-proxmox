@@ -38,7 +38,7 @@ require (
 )
 
 require (
-	github.com/awlsring/proxmox-go v0.25.0
+	github.com/awlsring/proxmox-go v0.30.0
 	github.com/fatih/color v1.14.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect

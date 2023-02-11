@@ -2,7 +2,6 @@ package bonds
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
@@ -22,23 +21,6 @@ func NewDataSource() datasource.DataSource {
 
 type bondsDataSource struct {
 	client *service.Proxmox
-}
-
-type bondsDataSourceModel struct {
-	Bonds   []bondModel           `tfsdk:"network_bonds"`
-	Filters []filters.FilterModel `tfsdk:"filters"`
-}
-
-type bondModel struct {
-	ID         types.String   `tfsdk:"id"`
-	Node       types.String   `tfsdk:"node"`
-	Name       types.String   `tfsdk:"name"`
-	Active     types.Bool     `tfsdk:"active"`
-	Autostart  types.Bool     `tfsdk:"autostart"`
-	HashPolicy types.String   `tfsdk:"hash_policy"`
-	Mode       types.String   `tfsdk:"mode"`
-	MiiMon     types.String   `tfsdk:"mii_mon"`
-	Interfaces []types.String `tfsdk:"interfaces"`
 }
 
 func (d *bondsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -65,27 +47,35 @@ func (d *bondsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
 							Computed:    true,
-							Description: "The id of the bridge. Formatted as /{node}/{name}.",
+							Description: "The id of the bond. Formatted as `/{node}/{name}`.",
 						},
 						"node": schema.StringAttribute{
 							Computed:    true,
-							Description: "The node the bridge is on.",
+							Description: "The node the bond is on.",
 						},
 						"name": schema.StringAttribute{
 							Computed:    true,
-							Description: "The name of the bridge.",
+							Description: "The name of the bond.",
 						},
 						"active": schema.BoolAttribute{
 							Computed:    true,
-							Description: "If the bridge is active.",
+							Description: "If the bond is active.",
 						},
 						"autostart": schema.BoolAttribute{
 							Computed:    true,
-							Description: "If the bridge is set to autostart.",
+							Description: "If the bond is set to autostart.",
 						},
 						"hash_policy": schema.StringAttribute{
 							Computed:    true,
 							Description: "Hash policy used on the bond.",
+						},
+						"bond_primary": schema.StringAttribute{
+							Computed:    true,
+							Description: "Primary interface on the bond.",
+						},
+						"comments": schema.StringAttribute{
+							Computed:    true,
+							Description: "Comments on the bond.",
 						},
 						"mode": schema.StringAttribute{
 							Computed:    true,
@@ -98,7 +88,7 @@ func (d *bondsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 						"interfaces": schema.ListAttribute{
 							Computed:    true,
 							ElementType: types.StringType,
-							Description: "List of interfaces on the bridge.",
+							Description: "List of interfaces on the bond.",
 						},
 					},
 				},
@@ -131,22 +121,7 @@ func (d *bondsDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 
 	for _, bond := range bonds {
-		stateBonds := bondModel{
-			ID:         types.StringValue(fmt.Sprintf("%s/%s", bond.Node, bond.Name)),
-			Node:       types.StringValue(bond.Node),
-			Name:       types.StringValue(bond.Name),
-			Active:     types.BoolValue(bond.Active),
-			Autostart:  types.BoolValue(bond.Autostart),
-			Mode:       types.StringValue(string(bond.Mode)),
-			HashPolicy: types.StringValue(string(bond.HashPolicy)),
-			MiiMon:     types.StringValue(bond.MiiMon),
-		}
-
-		for _, iface := range bond.Interfaces {
-			stateBonds.Interfaces = append(stateBonds.Interfaces, types.StringValue(iface))
-		}
-
-		state.Bonds = append(state.Bonds, stateBonds)
+		state.Bonds = append(state.Bonds, BondToModel(&bond))
 	}
 
 	diags := resp.State.Set(ctx, &state)

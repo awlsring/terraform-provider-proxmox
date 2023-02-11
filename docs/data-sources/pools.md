@@ -38,7 +38,7 @@ Required:
 Read-Only:
 
 - `comment` (String) Notes on the pool.
-- `id` (String) The id of the bridge. Formatted as /{node}/{name}.
+- `id` (String) The id of the pool.
 - `members` (Attributes List) Resources that are part of the pool. (see [below for nested schema](#nestedatt--pools--members))
 
 <a id="nestedatt--pools--members"></a>
