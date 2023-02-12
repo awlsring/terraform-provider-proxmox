@@ -3,9 +3,22 @@ package utils
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 )
+
+func UnpackId(id string) (string, string, error) {
+	s := strings.Split(id, "/")
+	if len(s) != 2 {
+		return "", "", fmt.Errorf("invalid id %s", id)
+	}
+	return s[0], s[1], nil
+}
+
+func FormId(node string, name string) string {
+	return fmt.Sprintf("%s/%s", node, name)
+}
 
 func OptionalToPointerString(s string) *string {
 	if s == "" {
@@ -38,6 +51,10 @@ func Contains(s []int, e int) bool {
 		}
 	}
 	return false
+}
+
+func Float32ToInt64(f float32) int64 {
+	return int64(f)
 }
 
 func LoadPlanAndState(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse, plan any, state any) (any, any, error) {

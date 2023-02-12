@@ -23,6 +23,7 @@ Currently this is very early in development and isn't suitable for use yet. Many
 
 * Resource pool
 * Network bond
+* Network bridge
 
 ## Planned resources
 
@@ -34,7 +35,6 @@ Currently this is very early in development and isn't suitable for use yet. Many
 
 ### Resource
 
-* Network bridge
 * Virtual Machine
 * Storage
 * User

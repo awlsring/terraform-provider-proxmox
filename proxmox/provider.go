@@ -5,13 +5,14 @@ import (
 	"os"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/local-storage/zfs"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/network/bonds"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/network/bridges"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/nodes"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/pools"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/templates"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/storage"
+	storage_pools "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-pools"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -190,9 +191,10 @@ func (p *ProxmoxProvider) DataSources(ctx context.Context) []func() datasource.D
 		bonds.DataSource,
 		bridges.DataSource,
 		pools.DataSource,
-		storage.DataSource,
+		storage_pools.DataSource,
 		vms.DataSource,
 		templates.DataSource,
+		zfs.DataSource,
 	}
 
 }
