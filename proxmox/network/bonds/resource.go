@@ -21,7 +21,7 @@ var (
 	_ resource.ResourceWithImportState = &bondResource{}
 )
 
-func NewResource() resource.Resource {
+func Resource() resource.Resource {
 	return &bondResource{}
 }
 

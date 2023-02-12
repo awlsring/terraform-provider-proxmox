@@ -15,7 +15,7 @@ var (
 	_ datasource.DataSourceWithConfigure = &nodesDataSource{}
 )
 
-func NewDataSource() datasource.DataSource {
+func DataSource() datasource.DataSource {
 	return &nodesDataSource{}
 }
 

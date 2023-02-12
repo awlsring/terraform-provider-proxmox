@@ -18,7 +18,7 @@ var (
 	_ datasource.DataSourceWithConfigure = &templatesDataSource{}
 )
 
-func NewDataSource() datasource.DataSource {
+func DataSource() datasource.DataSource {
 	return &templatesDataSource{}
 }
 

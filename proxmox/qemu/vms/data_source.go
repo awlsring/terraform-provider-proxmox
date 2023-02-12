@@ -18,7 +18,7 @@ var (
 	_ datasource.DataSourceWithConfigure = &virtualMachinesDataSource{}
 )
 
-func NewDataSource() datasource.DataSource {
+func DataSource() datasource.DataSource {
 	return &virtualMachinesDataSource{}
 }
 

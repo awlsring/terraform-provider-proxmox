@@ -21,7 +21,7 @@ var (
 	_ resource.ResourceWithImportState = &bridgeResource{}
 )
 
-func NewResource() resource.Resource {
+func Resource() resource.Resource {
 	return &bridgeResource{}
 }
 

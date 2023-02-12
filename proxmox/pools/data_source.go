@@ -15,7 +15,7 @@ var (
 	_ datasource.DataSourceWithConfigure = &poolsDataSource{}
 )
 
-func NewDataSource() datasource.DataSource {
+func DataSource() datasource.DataSource {
 	return &poolsDataSource{}
 }
 

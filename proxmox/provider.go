@@ -178,21 +178,21 @@ func (p *ProxmoxProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 func (p *ProxmoxProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		pools.NewResource,
-		bonds.NewResource,
-		bridges.NewResource,
+		pools.Resource,
+		bonds.Resource,
+		bridges.Resource,
 	}
 }
 
 func (p *ProxmoxProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		nodes.NewDataSource,
-		bonds.NewDataSource,
-		bridges.NewDataSource,
-		pools.NewDataSource,
-		storage.NewDataSource,
-		vms.NewDataSource,
-		templates.NewDataSource,
+		nodes.DataSource,
+		bonds.DataSource,
+		bridges.DataSource,
+		pools.DataSource,
+		storage.DataSource,
+		vms.DataSource,
+		templates.DataSource,
 	}
 
 }

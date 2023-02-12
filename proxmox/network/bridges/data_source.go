@@ -16,7 +16,7 @@ var (
 	_ datasource.DataSourceWithConfigure = &bridgesDataSource{}
 )
 
-func NewDataSource() datasource.DataSource {
+func DataSource() datasource.DataSource {
 	return &bridgesDataSource{}
 }
 

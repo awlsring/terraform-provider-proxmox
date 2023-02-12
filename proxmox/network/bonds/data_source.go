@@ -13,7 +13,7 @@ var (
 	_ datasource.DataSourceWithConfigure = &bondsDataSource{}
 )
 
-func NewDataSource() datasource.DataSource {
+func DataSource() datasource.DataSource {
 	return &bondsDataSource{}
 }
 
