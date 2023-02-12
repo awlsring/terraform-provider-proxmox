@@ -35,6 +35,11 @@ Required:
 <a id="nestedatt--network_bonds"></a>
 ### Nested Schema for `network_bonds`
 
+Optional:
+
+- `ipv4_gateway` (String) The ipv4 gateway.
+- `ipv6_gateway` (String) The ipv6 gateway.
+
 Read-Only:
 
 - `active` (Boolean) If the bond is active.
@@ -42,11 +47,30 @@ Read-Only:
 - `bond_primary` (String) Primary interface on the bond.
 - `comments` (String) Comments on the bond.
 - `hash_policy` (String) Hash policy used on the bond.
-- `id` (String) The id of the bond. Formatted as `/{node}/{name}`.
+- `id` (String) The id of the bond. Formatted as `{node}/{name}`.
 - `interfaces` (List of String) List of interfaces on the bond.
+- `ipv4` (Object) Information of the ipv4 address. (see [below for nested schema](#nestedatt--network_bonds--ipv4))
+- `ipv6` (Object) Information of the ipv6 address. (see [below for nested schema](#nestedatt--network_bonds--ipv6))
 - `mii_mon` (String) Miimon of the bond.
 - `mode` (String) Mode of the bond.
 - `name` (String) The name of the bond.
 - `node` (String) The node the bond is on.
+
+<a id="nestedatt--network_bonds--ipv4"></a>
+### Nested Schema for `network_bonds.ipv4`
+
+Read-Only:
+
+- `address` (String)
+- `netmask` (String)
+
+
+<a id="nestedatt--network_bonds--ipv6"></a>
+### Nested Schema for `network_bonds.ipv6`
+
+Read-Only:
+
+- `address` (String)
+- `netmask` (String)
 
 

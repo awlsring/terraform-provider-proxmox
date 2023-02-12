@@ -35,11 +35,17 @@ Required:
 <a id="nestedatt--network_bridges"></a>
 ### Nested Schema for `network_bridges`
 
+Optional:
+
+- `comments` (String) Comment in the bond.
+- `ipv4_gateway` (String) The ipv4 gateway.
+- `ipv6_gateway` (String) The ipv6 gateway.
+
 Read-Only:
 
 - `active` (Boolean) If the bridge is active.
 - `autostart` (Boolean) If the bridge is set to autostart.
-- `id` (String) The id of the bridge. Formatted as /{node}/{name}.
+- `id` (String) The id of the bridge. Formatted as `{node}/{name}`.
 - `interfaces` (List of String) List of interfaces on the bridge.
 - `ipv4` (Object) Information of the ipv4 address. (see [below for nested schema](#nestedatt--network_bridges--ipv4))
 - `ipv6` (Object) Information of the ipv6 address. (see [below for nested schema](#nestedatt--network_bridges--ipv6))
@@ -53,7 +59,6 @@ Read-Only:
 Read-Only:
 
 - `address` (String)
-- `gateway` (String)
 - `netmask` (String)
 
 
@@ -63,7 +68,6 @@ Read-Only:
 Read-Only:
 
 - `address` (String)
-- `gateway` (String)
 - `netmask` (String)
 
 

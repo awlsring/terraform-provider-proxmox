@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/bonds"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/bridges"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/network/bonds"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/network/bridges"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/nodes"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/pools"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/templates"
@@ -180,6 +180,7 @@ func (p *ProxmoxProvider) Resources(ctx context.Context) []func() resource.Resou
 	return []func() resource.Resource{
 		pools.NewResource,
 		bonds.NewResource,
+		bridges.NewResource,
 	}
 }
 

@@ -3,22 +3,14 @@ package bonds
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"sort"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/awlsring/proxmox-go/proxmox"
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/network"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -37,99 +29,12 @@ type bondResource struct {
 	client *service.Proxmox
 }
 
-func formId(node string, name string) string {
-	return fmt.Sprintf("%s/%s", node, name)
-}
-
-func unpackId(id string) (string, string, error) {
-	s := strings.Split(id, "/")
-	if len(s) != 2 {
-		return "", "", fmt.Errorf("invalid id %s", id)
-	}
-	return s[0], s[1], nil
-}
-
 func (r *bondResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_network_bond"
 }
 
 func (r *bondResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "The id of the bond. Formatted as `/{node}/{name}`.",
-			},
-			"node": schema.StringAttribute{
-				Required:    true,
-				Description: "The node the bond is on.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"name": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The name of the bond.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("bond[0-9]$"), "name must follow scheme `bond<n>`"),
-				},
-			},
-			"active": schema.BoolAttribute{
-				Computed:    true,
-				Description: "If the bond is active.",
-			},
-			"autostart": schema.BoolAttribute{
-				Optional:    true,
-				Description: "If the bond is set to autostart.",
-			},
-			"hash_policy": schema.StringAttribute{
-				Optional:    true,
-				Description: "Hash policy used on the bond.",
-				Validators: []validator.String{
-					stringvalidator.OneOf("layer2", "layer2+3", "layer3+4"),
-				},
-			},
-			"bond_primary": schema.StringAttribute{
-				Optional:    true,
-				Description: "Primary interface on the bond.",
-			},
-			"mode": schema.StringAttribute{
-				Required:    true,
-				Description: "Mode of the bond.",
-				Validators: []validator.String{
-					stringvalidator.OneOf(
-						"balance-rr",
-						"active-backup",
-						"balance-xor",
-						"broadcast",
-						"802.3ad",
-						"balance-tlb",
-						"balance-alb",
-						"balance-slb",
-						"lacp-balance-slb",
-						"lacp-balance-tcp",
-					),
-				},
-			},
-			"comments": schema.StringAttribute{
-				Optional:    true,
-				Description: "Comment in the bond.",
-			},
-			"mii_mon": schema.StringAttribute{
-				Computed:    true,
-				Description: "Miimon of the bond.",
-			},
-			"interfaces": schema.ListAttribute{
-				Required:    true,
-				ElementType: types.StringType,
-				Description: "List of interfaces on the bond.",
-			},
-		},
-	}
+	resp.Schema = resourceSchema
 }
 
 func (r *bondResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
@@ -173,6 +78,22 @@ func (r *bondResource) Create(ctx context.Context, req resource.CreateRequest, r
 		BondPrimary: utils.OptionalToPointerString(plan.BondPrimary.ValueString()),
 		AutoStart:   utils.OptionalToPointerBool(plan.Autostart.ValueBool()),
 		Comments:    utils.OptionalToPointerString(plan.Comments.ValueString()),
+		IPv4Gateway: utils.OptionalToPointerString(plan.IPv4Gateway.ValueString()),
+		IPv6Gateway: utils.OptionalToPointerString(plan.IPv6Gateway.ValueString()),
+	}
+
+	if plan.IPv4 != nil {
+		request.IPv4 = &service.IP{
+			Address: plan.IPv4.Address.ValueString(),
+			Netmask: plan.IPv4.Netmask.ValueString(),
+		}
+	}
+
+	if plan.IPv6 != nil {
+		request.IPv6 = &service.IP{
+			Address: plan.IPv6.Address.ValueString(),
+			Netmask: plan.IPv6.Netmask.ValueString(),
+		}
 	}
 
 	for _, i := range plan.Interfaces {
@@ -196,7 +117,7 @@ func (r *bondResource) Create(ctx context.Context, req resource.CreateRequest, r
 	var bond bondModel
 	tries := 0
 	for {
-		bond, err = r.readBondModel(ctx, formId(plan.Node.ValueString(), name))
+		bond, err = r.readBondModel(ctx, network.FormId(plan.Node.ValueString(), name))
 		if err != nil {
 			if tries < 3 {
 				tflog.Debug(ctx, "could not read bond, retrying...")
@@ -223,7 +144,7 @@ func (r *bondResource) Create(ctx context.Context, req resource.CreateRequest, r
 }
 
 func (r *bondResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	tflog.Debug(ctx, "Read pool method")
+	tflog.Debug(ctx, "Read bond method")
 	var state bondModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -234,11 +155,13 @@ func (r *bondResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	bondModel, err := r.readBondModel(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error reading pool",
-			"Could not read pool, unexpected error: "+err.Error(),
+			"Error reading bond",
+			"Could not read bond, unexpected error: "+err.Error(),
 		)
 		return
 	}
+
+	tflog.Debug(ctx, fmt.Sprintf("Bond model '%v'", bondModel))
 
 	diags = resp.State.Set(ctx, &bondModel)
 	resp.Diagnostics.Append(diags...)
@@ -259,31 +182,15 @@ func (r *bondResource) generateName(ctx context.Context, node string) (string, e
 		bondsNames = append(bondsNames, bond.Iface)
 	}
 
-	if len(bonds) == 0 {
-		return "bond0", err
-	}
-
-	var bondNumbers []int
-	re := regexp.MustCompile(`\d+`)
-	for _, bond := range bondsNames {
-		bondNumber, _ := strconv.Atoi(re.FindString(bond))
-		bondNumbers = append(bondNumbers, bondNumber)
-	}
-	sort.Ints(bondNumbers)
-
-	for i := 0; i < bondNumbers[len(bondNumbers)-1]+1; i++ {
-		if !utils.Contains(bondNumbers, i) {
-			return fmt.Sprintf("bond%d", i), nil
-		}
-	}
-	n := bondNumbers[len(bondNumbers)-1] + 1
-	return fmt.Sprintf("bond%d", n), nil
+	name := network.GenerateInterfaceName("bond", bondsNames)
+	tflog.Debug(ctx, fmt.Sprintf("Generated name: %s", name))
+	return name, nil
 }
 
 func (r *bondResource) readBondModel(ctx context.Context, id string) (bondModel, error) {
 	tflog.Debug(ctx, fmt.Sprintf("Reading bond model: %s", id))
 
-	node, name, err := unpackId(id)
+	node, name, err := network.UnpackId(id)
 	if err != nil {
 		return bondModel{}, err
 	}
@@ -297,6 +204,7 @@ func (r *bondResource) readBondModel(ctx context.Context, id string) (bondModel,
 }
 
 func (r *bondResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	tflog.Debug(ctx, "Update bond method")
 	var plan bondModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -311,14 +219,17 @@ func (r *bondResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		return
 	}
 
+	tflog.Debug(ctx, fmt.Sprintf("bond state '%v'", state))
+	tflog.Debug(ctx, fmt.Sprintf("bond plan '%v'", plan))
+
 	bond := bondModel{
 		ID:         state.ID,
 		Name:       state.Name,
 		Node:       state.Node,
 		Interfaces: plan.Interfaces,
 		Mode:       plan.Mode,
-		Autostart:  types.BoolValue(true),
-		Active:     plan.Active,
+		Autostart:  plan.Active,
+		Active:     state.Active,
 		MiiMon:     plan.MiiMon,
 	}
 
@@ -338,6 +249,28 @@ func (r *bondResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		bond.Comments = plan.Comments
 	}
 
+	if plan.IPv4 != nil {
+		bond.IPv4 = &network.IpAddressModel{
+			Address: plan.IPv4.Address,
+			Netmask: plan.IPv4.Netmask,
+		}
+	}
+
+	if plan.IPv6 != nil {
+		bond.IPv6 = &network.IpAddressModel{
+			Address: plan.IPv6.Address,
+			Netmask: plan.IPv6.Netmask,
+		}
+	}
+
+	if !plan.IPv4Gateway.IsNull() && !plan.IPv4Gateway.IsUnknown() {
+		bond.IPv4Gateway = plan.IPv4Gateway
+	}
+
+	if !plan.IPv6Gateway.IsNull() && !plan.IPv6Gateway.IsUnknown() {
+		bond.IPv6Gateway = plan.IPv6Gateway
+	}
+
 	request := &service.UpdateNetworkBondInput{
 		Interfaces:  []string{},
 		Name:        bond.Name.ValueString(),
@@ -346,6 +279,22 @@ func (r *bondResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		BondPrimary: utils.OptionalToPointerString(bond.BondPrimary.ValueString()),
 		AutoStart:   utils.OptionalToPointerBool(bond.Autostart.ValueBool()),
 		Comments:    utils.OptionalToPointerString(bond.Comments.ValueString()),
+		IPv4Gateway: utils.OptionalToPointerString(bond.IPv4Gateway.ValueString()),
+		IPv6Gateway: utils.OptionalToPointerString(bond.IPv6Gateway.ValueString()),
+	}
+
+	if bond.IPv4 != nil {
+		request.IPv4 = &service.IP{
+			Address: plan.IPv4.Address.ValueString(),
+			Netmask: plan.IPv4.Netmask.ValueString(),
+		}
+	}
+
+	if bond.IPv6 != nil {
+		request.IPv6 = &service.IP{
+			Address: plan.IPv6.Address.ValueString(),
+			Netmask: plan.IPv6.Netmask.ValueString(),
+		}
 	}
 
 	for _, i := range bond.Interfaces {
@@ -385,12 +334,14 @@ func (r *bondResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		return
 	}
 
+	tflog.Debug(ctx, fmt.Sprintf("bond state '%v'", state))
+
 	tflog.Debug(ctx, fmt.Sprintf("Deleting bond: '%s' '%s'", state.Node.ValueString(), state.Name.ValueString()))
-	err := r.client.DeleteNetworkBond(ctx, state.Node.ValueString(), state.Name.ValueString())
+	err := r.client.DeleteNetworkInterface(ctx, state.Node.ValueString(), state.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error deleting pool",
-			"Could not delete pool, unexpected error: "+err.Error(),
+			"Error deleting bond",
+			"Could not delete bond, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -402,8 +353,8 @@ func (r *bondResource) ImportState(ctx context.Context, req resource.ImportState
 	model, err := r.readBondModel(ctx, req.ID)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error reading pool",
-			"Could not read pool, unexpected error: "+err.Error(),
+			"Error reading bond",
+			"Could not read bond, unexpected error: "+err.Error(),
 		)
 		return
 	}
