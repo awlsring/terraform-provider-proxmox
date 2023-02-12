@@ -40,6 +40,7 @@ type nodeModel struct {
 
 type diskModel struct {
 	Device types.String `tfsdk:"device"`
+	IDLink types.String `tfsdk:"id_link"`
 	Size   types.Int64  `tfsdk:"size"`
 	Model  types.String `tfsdk:"model"`
 	Serial types.String `tfsdk:"serial"`
@@ -97,6 +98,10 @@ func (d *nodesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 									"device": schema.StringAttribute{
 										Computed:    true,
 										Description: "The device name of the disk",
+									},
+									"id_link": schema.StringAttribute{
+										Computed:    true,
+										Description: "The id link of the disk",
 									},
 									"size": schema.Int64Attribute{
 										Computed:    true,
@@ -172,6 +177,7 @@ func (d *nodesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		for _, disk := range node.Disks {
 			stateDisk := diskModel{
 				Device: types.StringValue(disk.Device),
+				IDLink: types.StringValue(disk.IDLink),
 				Size:   types.Int64Value(int64(disk.Size)),
 				Model:  types.StringValue(disk.Model),
 				Serial: types.StringValue(disk.Serial),

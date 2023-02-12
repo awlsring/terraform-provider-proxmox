@@ -8,23 +8,24 @@ import (
 )
 
 type Node struct {
-	Id string
-	Node string
-	Cores int
-	SslFingerprint string
-	Memory int64
-	DiskSpace int64
-	Disks []Disk
+	Id                string
+	Node              string
+	Cores             int
+	SslFingerprint    string
+	Memory            int64
+	DiskSpace         int64
+	Disks             []Disk
 	NetworkInterfaces []NetworkInterface
 }
 
 type Disk struct {
 	Device string
-	Size int64
-	Model string
+	IDLink string
+	Size   int64
+	Model  string
 	Serial string
 	Vendor string
-	Type proxmox.DiskType
+	Type   proxmox.DiskType
 }
 
 type NetworkInterface struct {
@@ -48,18 +49,18 @@ func (c *Proxmox) DescribeNode(ctx context.Context, node string) (Node, error) {
 	}
 
 	return Node{
-		Id: *nodeSummary.Id,
-		Node: nodeSummary.Node,
-		Cores: int(*nodeSummary.Maxcpu),
-		SslFingerprint: *nodeSummary.SslFingerprint,
-		Memory: int64(*nodeSummary.Maxmem),
-		DiskSpace: int64(*nodeSummary.Maxdisk),
-		Disks: disks,
+		Id:                *nodeSummary.Id,
+		Node:              nodeSummary.Node,
+		Cores:             int(*nodeSummary.Maxcpu),
+		SslFingerprint:    *nodeSummary.SslFingerprint,
+		Memory:            int64(*nodeSummary.Maxmem),
+		DiskSpace:         int64(*nodeSummary.Maxdisk),
+		Disks:             disks,
 		NetworkInterfaces: networkInterfaces,
 	}, nil
 }
 
-func (c *Proxmox) GetNode(ctx context.Context, node string) (*proxmox.NodeSummary, error){
+func (c *Proxmox) GetNode(ctx context.Context, node string) (*proxmox.NodeSummary, error) {
 	nodes, err := c.ListNodes(ctx)
 	if err != nil {
 		return nil, err
@@ -95,11 +96,12 @@ func (c *Proxmox) ListDisks(ctx context.Context, node string) ([]Disk, error) {
 	for i, disk := range resp.Data {
 		disks[i] = Disk{
 			Device: disk.Devpath,
-			Size: int64(disk.Size),
-			Model: *disk.Model,
+			IDLink: PtrStringToString(disk.ByIdLink),
+			Size:   int64(disk.Size),
+			Model:  *disk.Model,
 			Serial: *disk.Serial,
 			Vendor: *disk.Vendor,
-			Type: *disk.Type,
+			Type:   *disk.Type,
 		}
 	}
 
