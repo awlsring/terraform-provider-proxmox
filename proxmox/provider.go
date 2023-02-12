@@ -182,6 +182,7 @@ func (p *ProxmoxProvider) Resources(ctx context.Context) []func() resource.Resou
 		pools.Resource,
 		bonds.Resource,
 		bridges.Resource,
+		zfs.Resource,
 	}
 }
 

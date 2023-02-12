@@ -5,9 +5,7 @@ import (
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 var (
@@ -48,7 +46,6 @@ func (d *zfsDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	nodes := filters.DetermineNode(d.client, state.Filters)
 
 	for _, node := range nodes {
-
 		zfsPools, err := d.client.DescribeZFSPools(ctx, node)
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -60,19 +57,7 @@ func (d *zfsDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		}
 
 		for _, p := range zfsPools {
-			pool := zfsModel{
-				ID:     types.StringValue(utils.FormId(node, p.Name)),
-				Node:   types.StringValue(node),
-				Name:   types.StringValue(p.Name),
-				Health: types.StringValue(p.Health),
-				Size:   types.Int64Value(p.Size),
-			}
-
-			for _, v := range p.Disks {
-				pool.Disks = append(pool.Disks, types.StringValue(v))
-			}
-
-			state.ZFSPools = append(state.ZFSPools, pool)
+			state.ZFSPools = append(state.ZFSPools, ZFSToModel(&p))
 		}
 	}
 

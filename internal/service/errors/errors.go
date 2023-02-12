@@ -23,6 +23,12 @@ func (e *ProxmoxError) Error() string {
 
 func ApiError(h *http.Response, e error) error {
 	var msg string
+	if h == nil {
+		return e
+	}
+	if h.Body == nil {
+		return e
+	}
 	b, err := io.ReadAll(h.Body)
 	if err != nil {
 		msg = "Unknown"

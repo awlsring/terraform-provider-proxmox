@@ -51,6 +51,7 @@ Read-Only:
 Read-Only:
 
 - `device` (String) The device name of the disk
+- `id_link` (String) The id link of the disk
 - `model` (String) The model of the disk
 - `serial` (String) The serial of the disk
 - `size` (Number) The size of the disk in bytes

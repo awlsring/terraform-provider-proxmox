@@ -37,10 +37,12 @@ Required:
 
 Read-Only:
 
+- `disks` (List of String) List of disks that make up the pool.
 - `health` (String) The health of the ZFS pool.
 - `id` (String) The id of the ZFS pool. Formatted as `{node}/{name}`.
 - `name` (String) The name of the ZFS pool.
 - `node` (String) The node the ZFS pool is on.
+- `raid_level` (String) The RAID level of the ZFS pool.
 - `size` (Number) The size of the ZFS pool in bytes.
 
 
