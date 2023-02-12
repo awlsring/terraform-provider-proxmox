@@ -3,6 +3,7 @@ package zfs
 import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
 	ds "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 var filter = filters.FilterConfig{"node"}
@@ -33,6 +34,11 @@ var dataSourceSchema = ds.Schema{
 					"health": ds.StringAttribute{
 						Computed:    true,
 						Description: "The health of the ZFS pool.",
+					},
+					"disks": ds.ListAttribute{
+						Computed:    true,
+						ElementType: types.StringType,
+						Description: "List of disks that make up the pool.",
 					},
 				},
 			},

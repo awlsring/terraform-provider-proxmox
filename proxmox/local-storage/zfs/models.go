@@ -11,9 +11,10 @@ type zfsDataSourceModel struct {
 }
 
 type zfsModel struct {
-	ID     types.String `tfsdk:"id"`
-	Node   types.String `tfsdk:"node"`
-	Name   types.String `tfsdk:"name"`
-	Size   types.Int64  `tfsdk:"size"`
-	Health types.String `tfsdk:"health"`
+	ID     types.String   `tfsdk:"id"`
+	Node   types.String   `tfsdk:"node"`
+	Name   types.String   `tfsdk:"name"`
+	Size   types.Int64    `tfsdk:"size"`
+	Health types.String   `tfsdk:"health"`
+	Disks  []types.String `tfsdk:"disks"`
 }

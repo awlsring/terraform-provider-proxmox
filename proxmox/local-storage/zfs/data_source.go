@@ -48,7 +48,8 @@ func (d *zfsDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	nodes := filters.DetermineNode(d.client, state.Filters)
 
 	for _, node := range nodes {
-		zfsPools, err := d.client.ListZFSPools(ctx, node)
+
+		zfsPools, err := d.client.DescribeZFSPools(ctx, node)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Unable to get zfs pools",
@@ -59,13 +60,19 @@ func (d *zfsDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		}
 
 		for _, p := range zfsPools {
-			state.ZFSPools = append(state.ZFSPools, zfsModel{
+			pool := zfsModel{
 				ID:     types.StringValue(utils.FormId(node, p.Name)),
 				Node:   types.StringValue(node),
 				Name:   types.StringValue(p.Name),
 				Health: types.StringValue(p.Health),
-				Size:   types.Int64Value(utils.Float32ToInt64(p.Size)),
-			})
+				Size:   types.Int64Value(p.Size),
+			}
+
+			for _, v := range p.Disks {
+				pool.Disks = append(pool.Disks, types.StringValue(v))
+			}
+
+			state.ZFSPools = append(state.ZFSPools, pool)
 		}
 	}
 
