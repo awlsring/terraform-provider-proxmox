@@ -10,9 +10,9 @@ func DetermineNode(client *service.Proxmox, filters []FilterModel) []string {
 	nodes := []string{}
 
 	for _, filter := range filters {
-		if filter.Name.String() == "node" {
+		if filter.Name.ValueString() == "node" {
 			for _, v := range filter.Values {
-				nodes = append(nodes, v.String())
+				nodes = append(nodes, v.ValueString())
 			}
 		}
 	}

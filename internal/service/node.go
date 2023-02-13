@@ -84,6 +84,20 @@ func (c *Proxmox) ListNodes(ctx context.Context) ([]proxmox.NodeSummary, error) 
 	return resp.Data, nil
 }
 
+func (c *Proxmox) listNodesNames(ctx context.Context) ([]string, error) {
+	request := c.client.ListNodes(ctx)
+	resp, _, err := c.client.ListNodesExecute(request)
+	if err != nil {
+		return nil, err
+	}
+
+	nodes := make([]string, len(resp.Data))
+	for i, node := range resp.Data {
+		nodes[i] = node.Node
+	}
+	return nodes, nil
+}
+
 func (c *Proxmox) ListDisks(ctx context.Context, node string) ([]Disk, error) {
 	request := c.client.ListDisks(ctx, node)
 	request = request.IncludePartitions(0)

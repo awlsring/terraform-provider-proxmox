@@ -104,7 +104,6 @@ func (c *Proxmox) DescribeZFSPool(ctx context.Context, node string, pool string)
 		}
 	}
 	return nil, fmt.Errorf("ZFS pool not found")
-
 }
 
 type CreateZFSPoolInput struct {

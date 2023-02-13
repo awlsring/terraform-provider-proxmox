@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func UnpackId(id string) (string, string, error) {
@@ -18,6 +19,24 @@ func UnpackId(id string) (string, string, error) {
 
 func FormId(node string, name string) string {
 	return fmt.Sprintf("%s/%s", node, name)
+}
+
+func UnpackList(l []string) []types.String {
+	var r []types.String
+	for _, s := range l {
+		r = append(r, types.StringValue(s))
+	}
+	return r
+}
+
+func ListContains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }
 
 func OptionalToPointerString(s string) *string {

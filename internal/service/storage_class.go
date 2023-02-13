@@ -8,18 +8,18 @@ import (
 )
 
 type Storage struct {
-	Id string
+	Id          string
 	SharedNodes []string
-	Shared bool
-	Local bool
-	Size int64
-	Source string
-	Content []string
-	Type proxmox.StorageType
+	Shared      bool
+	Local       bool
+	Size        int64
+	Source      string
+	Content     []string
+	Type        proxmox.StorageType
 }
 
 func (c *Proxmox) DescribeStorage(ctx context.Context) ([]Storage, error) {
-	storage, err := c.ListStorage(ctx,)
+	storage, err := c.ListStorage(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -37,14 +37,14 @@ func (c *Proxmox) DescribeStorage(ctx context.Context) ([]Storage, error) {
 				return nil, err
 			}
 			s := Storage{
-				Id: fmt.Sprintf(storageSummary.Storage),
+				Id:          fmt.Sprintf(storageSummary.Storage),
 				SharedNodes: nodes,
-				Source: source,
-				Shared: BooleanIntegerConversion(storageSummary.Shared),
-				Local: false,
-				Content: StringCommaListToSlice(storageSummary.Content),
-				Type: storageSummary.Type,
-				Size: PtrFloatToInt64(storageSummary.Total),
+				Source:      source,
+				Shared:      BooleanIntegerConversion(storageSummary.Shared),
+				Local:       false,
+				Content:     StringCommaListToSlice(storageSummary.Content),
+				Type:        storageSummary.Type,
+				Size:        PtrFloatToInt64(storageSummary.Total),
 			}
 			storageList = append(storageList, s)
 		}
@@ -81,13 +81,13 @@ func (c *Proxmox) DescribeLocalStorage(ctx context.Context) ([]Storage, error) {
 		}
 
 		ls := Storage{
-			Id: fmt.Sprintf("%s/%s", node.Node, local.Storage),
-			Shared: BooleanIntegerConversion(local.Shared),
-			Source: node.Node,
-			Local: true,
+			Id:      fmt.Sprintf("%s/%s", node.Node, local.Storage),
+			Shared:  BooleanIntegerConversion(local.Shared),
+			Source:  node.Node,
+			Local:   true,
 			Content: StringCommaListToSlice(local.Content),
-			Type: local.Type,
-			Size: PtrFloatToInt64(local.Total),
+			Type:    local.Type,
+			Size:    PtrFloatToInt64(local.Total),
 		}
 		if ls.Shared {
 			ls.SharedNodes = nodeList
@@ -101,13 +101,13 @@ func (c *Proxmox) DescribeLocalStorage(ctx context.Context) ([]Storage, error) {
 		}
 
 		lls := Storage{
-			Id: fmt.Sprintf("%s/%s", node.Node, localLvm.Storage),
-			Shared: BooleanIntegerConversion(localLvm.Shared),
-			Source: node.Node,
-			Local: true,
+			Id:      fmt.Sprintf("%s/%s", node.Node, localLvm.Storage),
+			Shared:  BooleanIntegerConversion(localLvm.Shared),
+			Source:  node.Node,
+			Local:   true,
 			Content: StringCommaListToSlice(localLvm.Content),
-			Type: localLvm.Type,
-			Size: PtrFloatToInt64(localLvm.Total),
+			Type:    localLvm.Type,
+			Size:    PtrFloatToInt64(localLvm.Total),
 		}
 		if lls.Shared {
 			lls.SharedNodes = nodeList
@@ -119,6 +119,16 @@ func (c *Proxmox) DescribeLocalStorage(ctx context.Context) ([]Storage, error) {
 	}
 
 	return storageSummaries, nil
+}
+
+func (c *Proxmox) GetStorageClass(ctx context.Context, storage string) (*proxmox.StorageSummary, error) {
+	request := c.client.GetStorage(ctx, storage)
+	resp, _, err := c.client.GetStorageExecute(request)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp.Data, nil
 }
 
 func (c *Proxmox) GetStorage(ctx context.Context, node string, storage string) (*proxmox.NodeStorageSummary, error) {
@@ -138,6 +148,17 @@ func (c *Proxmox) GetStorage(ctx context.Context, node string, storage string) (
 
 func (c *Proxmox) ListStorage(ctx context.Context) ([]proxmox.StorageSummary, error) {
 	request := c.client.ListStorage(ctx)
+	resp, _, err := c.client.ListStorageExecute(request)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Data, nil
+}
+
+func (c *Proxmox) listStorageOfType(ctx context.Context, filter proxmox.StorageType) ([]proxmox.StorageSummary, error) {
+	request := c.client.ListStorage(ctx)
+	request = request.Type_(filter)
 	resp, _, err := c.client.ListStorageExecute(request)
 	if err != nil {
 		return nil, err

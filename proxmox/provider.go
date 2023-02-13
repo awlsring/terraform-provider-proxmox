@@ -12,7 +12,8 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/pools"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/templates"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms"
-	storage_pools "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-pools"
+	storage_pools "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class"
+	zfs_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/zfs"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -196,6 +197,7 @@ func (p *ProxmoxProvider) DataSources(ctx context.Context) []func() datasource.D
 		vms.DataSource,
 		templates.DataSource,
 		zfs.DataSource,
+		zfs_storage_class.DataSource,
 	}
 
 }
