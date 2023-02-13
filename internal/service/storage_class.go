@@ -18,6 +18,7 @@ type Storage struct {
 	Type        proxmox.StorageType
 }
 
+// deprecated
 func (c *Proxmox) DescribeStorage(ctx context.Context) ([]Storage, error) {
 	storage, err := c.ListStorage(ctx)
 	if err != nil {
@@ -63,6 +64,7 @@ func determineStorageSource(s proxmox.StorageSummary, t proxmox.StorageType) (st
 	}
 }
 
+// deprecated
 func (c *Proxmox) DescribeLocalStorage(ctx context.Context) ([]Storage, error) {
 	nodes, err := c.ListNodes(ctx)
 	if err != nil {
@@ -131,6 +133,7 @@ func (c *Proxmox) GetStorageClass(ctx context.Context, storage string) (*proxmox
 	return &resp.Data, nil
 }
 
+// deprecated
 func (c *Proxmox) GetStorage(ctx context.Context, node string, storage string) (*proxmox.NodeStorageSummary, error) {
 	request := c.client.ListNodeStorage(ctx, node)
 	request = request.Storage(storage)

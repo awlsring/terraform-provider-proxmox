@@ -5,14 +5,13 @@ import (
 	"os"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/local-storage/zfs"
+	zfs_pool "github.com/awlsring/terraform-provider-proxmox/proxmox/local-storage/zfs"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/network/bonds"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/network/bridges"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/nodes"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/pools"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/templates"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms"
-	storage_pools "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class"
 	zfs_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/zfs"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -183,7 +182,7 @@ func (p *ProxmoxProvider) Resources(ctx context.Context) []func() resource.Resou
 		pools.Resource,
 		bonds.Resource,
 		bridges.Resource,
-		zfs.Resource,
+		zfs_pool.Resource,
 	}
 }
 
@@ -193,10 +192,9 @@ func (p *ProxmoxProvider) DataSources(ctx context.Context) []func() datasource.D
 		bonds.DataSource,
 		bridges.DataSource,
 		pools.DataSource,
-		storage_pools.DataSource,
 		vms.DataSource,
 		templates.DataSource,
-		zfs.DataSource,
+		zfs_pool.DataSource,
 		zfs_storage_class.DataSource,
 	}
 
