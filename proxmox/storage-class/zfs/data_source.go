@@ -90,11 +90,11 @@ func (d *storageClassZfsDataSource) Read(ctx context.Context, req datasource.Rea
 
 		if add {
 			zfs := storageClassZfsModel{
-				ID:      types.StringValue(s.Id),
-				Pool:    types.StringValue(s.ZFSPool),
-				Content: utils.UnpackList(s.Content),
-				Nodes:   utils.UnpackList(s.Nodes),
-				Mount:   types.StringValue(s.Mount),
+				ID:           types.StringValue(s.Id),
+				Pool:         types.StringValue(s.ZFSPool),
+				ContentTypes: utils.UnpackList(s.Content),
+				Nodes:        utils.UnpackList(s.Nodes),
+				Mount:        types.StringValue(s.Mount),
 			}
 			state.ZFS = append(state.ZFS, zfs)
 		}

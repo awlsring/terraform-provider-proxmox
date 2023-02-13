@@ -8,6 +8,7 @@ import (
 	zfs_pool "github.com/awlsring/terraform-provider-proxmox/proxmox/local-storage/zfs"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/network/bonds"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/network/bridges"
+	zfs_node "github.com/awlsring/terraform-provider-proxmox/proxmox/node-storage/zfs"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/nodes"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/pools"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/templates"
@@ -196,6 +197,7 @@ func (p *ProxmoxProvider) DataSources(ctx context.Context) []func() datasource.D
 		templates.DataSource,
 		zfs_pool.DataSource,
 		zfs_storage_class.DataSource,
+		zfs_node.DataSource,
 	}
 
 }

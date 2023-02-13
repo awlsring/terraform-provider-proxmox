@@ -11,9 +11,9 @@ type storageClassZfsDataSourceModel struct {
 }
 
 type storageClassZfsModel struct {
-	ID      types.String   `tfsdk:"id"`
-	Nodes   []types.String `tfsdk:"nodes"`
-	Content []types.String `tfsdk:"content"`
-	Pool    types.String   `tfsdk:"pool"`
-	Mount   types.String   `tfsdk:"mount"`
+	ID           types.String   `tfsdk:"id"`
+	Nodes        []types.String `tfsdk:"nodes"`
+	ContentTypes []types.String `tfsdk:"content_types"`
+	Pool         types.String   `tfsdk:"pool"`
+	Mount        types.String   `tfsdk:"mount"`
 }

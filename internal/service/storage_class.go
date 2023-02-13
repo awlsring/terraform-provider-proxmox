@@ -169,13 +169,3 @@ func (c *Proxmox) listStorageOfType(ctx context.Context, filter proxmox.StorageT
 
 	return resp.Data, nil
 }
-
-func (c *Proxmox) ListNodeStorage(ctx context.Context, node string) ([]proxmox.NodeStorageSummary, error) {
-	request := c.client.ListNodeStorage(ctx, node)
-	resp, _, err := c.client.ListNodeStorageExecute(request)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp.Data, nil
-}
