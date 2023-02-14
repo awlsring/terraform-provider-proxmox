@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/local-storage/lvm"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/local-storage/lvmthin"
 	zfs_pool "github.com/awlsring/terraform-provider-proxmox/proxmox/local-storage/zfs"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/network/bonds"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/network/bridges"
@@ -184,6 +186,8 @@ func (p *ProxmoxProvider) Resources(ctx context.Context) []func() resource.Resou
 		bonds.Resource,
 		bridges.Resource,
 		zfs_pool.Resource,
+		lvmthin.Resource,
+		lvm.Resource,
 	}
 }
 
@@ -198,6 +202,7 @@ func (p *ProxmoxProvider) DataSources(ctx context.Context) []func() datasource.D
 		zfs_pool.DataSource,
 		zfs_storage_class.DataSource,
 		zfs_node.DataSource,
+		lvmthin.DataSource,
+		lvm.DataSource,
 	}
-
 }

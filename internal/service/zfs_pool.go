@@ -131,8 +131,7 @@ func (c *Proxmox) CreateZFSPool(ctx context.Context, input *CreateZFSPoolInput) 
 
 func (c *Proxmox) DeleteZFSPool(ctx context.Context, node string, pool string) error {
 	request := c.client.DeleteZFSPool(ctx, node, pool)
-	request.CleanupDisks(1)
-	// request.CleanupConfig(1)
+	request = request.CleanupDisks(1)
 	_, h, err := c.client.DeleteZFSPoolExecute(request)
 	if err != nil {
 		return errors.ApiError(h, err)
