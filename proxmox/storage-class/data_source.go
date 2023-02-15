@@ -1,4 +1,4 @@
-package storage_pools
+package storage
 
 // import (
 // 	"context"

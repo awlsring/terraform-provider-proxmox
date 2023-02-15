@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -17,6 +18,8 @@ var (
 	_ resource.ResourceWithConfigure   = &zfsResource{}
 	_ resource.ResourceWithImportState = &zfsResource{}
 )
+
+var defaultContentTypes = []string{"images", "rootdir"}
 
 func Resource() resource.Resource {
 	return &zfsResource{}
@@ -50,7 +53,7 @@ func (r *zfsResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
-	nodes, err := r.determineNodes(ctx, plan.Nodes)
+	nodes, err := storage.DetermineNodes(ctx, r.client, plan.Nodes)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error determining nodes",
@@ -58,8 +61,9 @@ func (r *zfsResource) Create(ctx context.Context, req resource.CreateRequest, re
 		)
 		return
 	}
+	tflog.Debug(ctx, fmt.Sprintf("nodes '%v'", nodes))
 
-	contentTypes, err := r.determineContentTypes(ctx, plan.ContentTypes)
+	contentTypes, err := storage.DetermineContentTypes(ctx, plan.ContentTypes, defaultContentTypes)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error determining content types",
@@ -195,7 +199,7 @@ func (r *zfsResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 
-	nodes, err := r.determineNodes(ctx, plan.Nodes)
+	nodes, err := storage.DetermineNodes(ctx, r.client, plan.Nodes)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error determining nodes",
@@ -205,7 +209,7 @@ func (r *zfsResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	}
 	tflog.Debug(ctx, fmt.Sprintf("nodes '%v'", nodes))
 
-	contentTypes, err := r.determineContentTypes(ctx, plan.ContentTypes)
+	contentTypes, err := storage.DetermineContentTypes(ctx, plan.ContentTypes, defaultContentTypes)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error determining content types",
