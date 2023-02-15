@@ -1,6 +1,7 @@
 package zfs
 
 import (
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class"
 	ds "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	rs "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
@@ -84,6 +85,10 @@ var resourceSchema = rs.Schema{
 			PlanModifiers: []planmodifier.List{
 				listplanmodifier.UseStateForUnknown(),
 			},
+			Validators: storage.ContentTypeValidator(
+				"images",
+				"rootdir",
+			),
 		},
 	},
 }

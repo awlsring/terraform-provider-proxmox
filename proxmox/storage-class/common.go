@@ -4,9 +4,21 @@ import (
 	"context"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
+
+func ContentTypeValidator(t ...string) []validator.List {
+	return []validator.List{
+		listvalidator.UniqueValues(),
+		listvalidator.ValueStringsAre(
+			stringvalidator.OneOf(t...),
+		),
+	}
+}
 
 func DetermineContentTypes(ctx context.Context, c types.List, defaults []string) ([]string, error) {
 	if c.IsNull() || c.IsUnknown() {

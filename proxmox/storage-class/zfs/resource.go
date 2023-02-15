@@ -9,7 +9,6 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -140,47 +139,6 @@ func (r *zfsResource) readstorageClassZfsModel(ctx context.Context, name string)
 	}
 
 	return ZFSStorageClassToModel(s), nil
-}
-
-func (r *zfsResource) determineNodes(ctx context.Context, n types.List) ([]string, error) {
-	if n.IsNull() || n.IsUnknown() {
-		tflog.Debug(ctx, "nodes is null or unknown")
-		nodes, err := r.client.ListNodesNames(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return nodes, nil
-	}
-	tflog.Debug(ctx, "nodes is not null or unknown")
-	nodes := []string{}
-	for _, node := range n.Elements() {
-		v, err := node.ToTerraformValue(ctx)
-		if err != nil {
-			return nil, err
-		}
-		var n string
-		v.As(&n)
-		nodes = append(nodes, n)
-	}
-	return nodes, nil
-}
-
-func (r *zfsResource) determineContentTypes(ctx context.Context, c types.List) ([]string, error) {
-	if c.IsNull() || c.IsUnknown() {
-		return []string{"images", "rootdir"}, nil
-	}
-	tflog.Debug(ctx, "content types is not null or unknown")
-	contentTypes := []string{}
-	for _, contentType := range c.Elements() {
-		v, err := contentType.ToTerraformValue(ctx)
-		if err != nil {
-			return nil, err
-		}
-		var c string
-		v.As(&c)
-		contentTypes = append(contentTypes, c)
-	}
-	return contentTypes, nil
 }
 
 func (r *zfsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
