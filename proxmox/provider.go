@@ -15,6 +15,8 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/pools"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/templates"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms"
+	lvm_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/lvm"
+	lvmthin_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/lvmthin"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/nfs"
 	zfs_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/zfs"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -191,6 +193,8 @@ func (p *ProxmoxProvider) Resources(ctx context.Context) []func() resource.Resou
 		lvm.Resource,
 		zfs_storage_class.Resource,
 		nfs.Resource,
+		lvm_storage_class.Resource,
+		lvmthin_storage_class.Resource,
 	}
 }
 
@@ -208,5 +212,7 @@ func (p *ProxmoxProvider) DataSources(ctx context.Context) []func() datasource.D
 		lvmthin.DataSource,
 		lvm.DataSource,
 		nfs.DataSource,
+		lvm_storage_class.DataSource,
+		lvmthin_storage_class.DataSource,
 	}
 }
