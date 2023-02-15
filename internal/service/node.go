@@ -84,7 +84,7 @@ func (c *Proxmox) ListNodes(ctx context.Context) ([]proxmox.NodeSummary, error) 
 	return resp.Data, nil
 }
 
-func (c *Proxmox) listNodesNames(ctx context.Context) ([]string, error) {
+func (c *Proxmox) ListNodesNames(ctx context.Context) ([]string, error) {
 	request := c.client.ListNodes(ctx)
 	resp, _, err := c.client.ListNodesExecute(request)
 	if err != nil {

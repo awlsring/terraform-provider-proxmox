@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -27,6 +28,15 @@ func UnpackList(l []string) []types.String {
 		r = append(r, types.StringValue(s))
 	}
 	return r
+}
+
+func UnpackListType(l []string) types.List {
+	elements := []attr.Value{}
+	for _, s := range l {
+		elements = append(elements, types.StringValue(s))
+	}
+	t, _ := types.ListValue(types.StringType, elements)
+	return t
 }
 
 func ListContains(s []string, str string) bool {

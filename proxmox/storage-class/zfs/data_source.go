@@ -8,7 +8,6 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -26,7 +25,7 @@ type storageClassZfsDataSource struct {
 }
 
 func (d *storageClassZfsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_storage_class_zfs"
+	resp.TypeName = req.ProviderTypeName + "_zfs_storage_classes"
 }
 
 func (d *storageClassZfsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
@@ -89,14 +88,7 @@ func (d *storageClassZfsDataSource) Read(ctx context.Context, req datasource.Rea
 		}
 
 		if add {
-			zfs := storageClassZfsModel{
-				ID:           types.StringValue(s.Id),
-				Pool:         types.StringValue(s.ZFSPool),
-				ContentTypes: utils.UnpackList(s.Content),
-				Nodes:        utils.UnpackList(s.Nodes),
-				Mount:        types.StringValue(s.Mount),
-			}
-			state.ZFS = append(state.ZFS, zfs)
+			state.ZFS = append(state.ZFS, ZFSStorageClassToModel(&s))
 		}
 	}
 

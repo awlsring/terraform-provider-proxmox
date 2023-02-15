@@ -48,6 +48,14 @@ func SliceToStringCommaList(s []string) string {
 	return strings.Join(s, ",")
 }
 
+func SliceToStringCommaListPtr(s []string) *string {
+	if len(s) == 0 {
+		return nil
+	}
+	r := SliceToStringCommaList(s)
+	return &r
+}
+
 func StringSemiColonListToSlice(s string) []string {
 	if s == "" {
 		return []string{}

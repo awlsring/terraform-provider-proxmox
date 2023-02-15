@@ -188,6 +188,7 @@ func (p *ProxmoxProvider) Resources(ctx context.Context) []func() resource.Resou
 		zfs_pool.Resource,
 		lvmthin.Resource,
 		lvm.Resource,
+		zfs_storage_class.Resource,
 	}
 }
 

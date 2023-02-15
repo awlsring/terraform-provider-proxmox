@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/awlsring/proxmox-go/proxmox"
+	"github.com/awlsring/terraform-provider-proxmox/internal/service/errors"
 )
 
 type ZFSStorageClass struct {
@@ -28,7 +29,7 @@ func (c *Proxmox) ListZFSStorageClasses(ctx context.Context) ([]ZFSStorageClass,
 			nodes = StringCommaPtrListToSlice(s.Nodes)
 		} else {
 			if len(allNodes) == 0 {
-				allNodes, err = c.listNodesNames(ctx)
+				allNodes, err = c.ListNodesNames(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -59,7 +60,7 @@ func (c *Proxmox) GetZFSStorageClass(ctx context.Context, name string) (*ZFSStor
 	if storage.Nodes != nil {
 		nodes = StringCommaPtrListToSlice(storage.Nodes)
 	} else {
-		nodes, err = c.listNodesNames(ctx)
+		nodes, err = c.ListNodesNames(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -74,4 +75,60 @@ func (c *Proxmox) GetZFSStorageClass(ctx context.Context, name string) (*ZFSStor
 	}
 
 	return &s, nil
+}
+
+type CreateZFSStorageClassInput struct {
+	Id           string
+	Nodes        []string
+	ContentTypes []string
+	Pool         string
+}
+
+func (c *Proxmox) CreateZFSStorageClass(ctx context.Context, input *CreateZFSStorageClassInput) error {
+	request := c.client.CreateStorage(ctx)
+	content := proxmox.CreateStorageRequestContent{
+		Storage: input.Id,
+		Type:    proxmox.STORAGETYPE_ZFSPOOL,
+		Content: SliceToStringCommaListPtr(input.ContentTypes),
+		Pool:    &input.Pool,
+	}
+	request = request.CreateStorageRequestContent(content)
+
+	_, h, err := c.client.CreateStorageExecute(request)
+	if err != nil {
+		return errors.ApiError(h, err)
+	}
+
+	return nil
+}
+
+func (c *Proxmox) DeleteZFSSStorageClass(ctx context.Context, name string) error {
+	request := c.client.DeleteStorage(ctx, name)
+	h, err := c.client.DeleteStorageExecute(request)
+	if err != nil {
+		return errors.ApiError(h, err)
+	}
+
+	return nil
+}
+
+type ModifyZFSStorageClassInput struct {
+	Nodes        []string
+	ContentTypes []string
+}
+
+func (c *Proxmox) ModifyZFSStorageClass(ctx context.Context, name string, input *ModifyZFSStorageClassInput) error {
+	request := c.client.ModifyStorage(ctx, name)
+	content := proxmox.ModifyStorageRequestContent{
+		Nodes:   SliceToStringCommaListPtr(input.Nodes),
+		Content: SliceToStringCommaListPtr(input.ContentTypes),
+	}
+	request = request.ModifyStorageRequestContent(content)
+
+	_, h, err := c.client.ModifyStorageExecute(request)
+	if err != nil {
+		return errors.ApiError(h, err)
+	}
+
+	return nil
 }
