@@ -1,4 +1,4 @@
-package pools
+package resource_pools
 
 import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
@@ -6,7 +6,7 @@ import (
 )
 
 type poolsDataSourceModel struct {
-	Pools   []poolModel           `tfsdk:"pools"`
+	Pools   []poolModel           `tfsdk:"resource_pools"`
 	Filters []filters.FilterModel `tfsdk:"filters"`
 }
 

@@ -15,9 +15,9 @@ import (
 	nfs_node "github.com/awlsring/terraform-provider-proxmox/proxmox/node-storage/nfs"
 	zfs_node "github.com/awlsring/terraform-provider-proxmox/proxmox/node-storage/zfs"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/nodes"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/pools"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/templates"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/resource_pools"
 	lvm_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/lvm"
 	lvmthin_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/lvmthin"
 	nfs_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/nfs"
@@ -188,7 +188,7 @@ func (p *ProxmoxProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 func (p *ProxmoxProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		pools.Resource,
+		resource_pools.Resource,
 		bonds.Resource,
 		bridges.Resource,
 		zfs_pool.Resource,
@@ -206,7 +206,7 @@ func (p *ProxmoxProvider) DataSources(ctx context.Context) []func() datasource.D
 		nodes.DataSource,
 		bonds.DataSource,
 		bridges.DataSource,
-		pools.DataSource,
+		resource_pools.DataSource,
 		vms.DataSource,
 		templates.DataSource,
 		zfs_pool.DataSource,

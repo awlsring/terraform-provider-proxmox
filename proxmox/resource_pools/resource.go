@@ -1,4 +1,4 @@
-package pools
+package resource_pools
 
 import (
 	"context"
@@ -30,7 +30,7 @@ type poolResource struct {
 }
 
 func (r *poolResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_pool"
+	resp.TypeName = req.ProviderTypeName + "_resource_pool"
 }
 
 func (r *poolResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -38,16 +38,16 @@ func (r *poolResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Required:    true,
-				Description: "The id of the pool.",
+				Description: "The id of the resource pool.",
 			},
 			"comment": schema.StringAttribute{
 				Optional:    true,
-				Description: "Notes on the pool.",
+				Description: "Notes on the resource pool.",
 			},
 			// can be consolidated with data source
 			"members": schema.ListNestedAttribute{
 				Optional:    true,
-				Description: "Resources that are part of the pool.",
+				Description: "Resources that are part of the resource pool.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
@@ -87,8 +87,8 @@ func (r *poolResource) Create(ctx context.Context, req resource.CreateRequest, r
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error creating pool",
-			"Could not create pool, unexpected error: "+err.Error(),
+			"Error creating resource pool",
+			"Could not create resource pool, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -114,8 +114,8 @@ func (r *poolResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 		if err != nil {
 			resp.Diagnostics.AddError(
-				"Error creating pool",
-				"Could not add members to pool, unexpected error: "+err.Error(),
+				"Error creating resource pool",
+				"Could not add members to resource pool, unexpected error: "+err.Error(),
 			)
 			return
 		}
@@ -123,8 +123,8 @@ func (r *poolResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error creating pool",
-			"Could not create pool, unexpected error: "+err.Error(),
+			"Error creating resource pool",
+			"Could not create resource pool, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -137,7 +137,7 @@ func (r *poolResource) Create(ctx context.Context, req resource.CreateRequest, r
 }
 
 func (r *poolResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	tflog.Debug(ctx, "Read pool method")
+	tflog.Debug(ctx, "Read resource pool method")
 	var state poolModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -148,8 +148,8 @@ func (r *poolResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	poolModel, err := r.readPoolModel(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error reading pool",
-			"Could not read pool, unexpected error: "+err.Error(),
+			"Error reading resource pool",
+			"Could not read resource pool, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -220,12 +220,12 @@ func (r *poolResource) Update(ctx context.Context, req resource.UpdateRequest, r
 
 	// Add members
 	if len(newMembers) > 0 {
-		tflog.Debug(ctx, "Adding members to pool")
+		tflog.Debug(ctx, "Adding members to resource pool")
 		err := r.changePoolMembers(ctx, plan.ID.ValueString(), comment, newMembers, false)
 		if err != nil {
 			resp.Diagnostics.AddError(
-				"Error updating pool",
-				"Could not update pool, unexpected error: "+err.Error(),
+				"Error updating resource pool",
+				"Could not update resource pool, unexpected error: "+err.Error(),
 			)
 			return
 		}
@@ -233,12 +233,12 @@ func (r *poolResource) Update(ctx context.Context, req resource.UpdateRequest, r
 
 	// Remove members
 	if len(removedMembers) > 0 {
-		tflog.Debug(ctx, "Removing members to pool")
+		tflog.Debug(ctx, "Removing members to resource pool")
 		err := r.changePoolMembers(ctx, plan.ID.ValueString(), comment, removedMembers, true)
 		if err != nil {
 			resp.Diagnostics.AddError(
-				"Error updating pool",
-				"Could not update pool, unexpected error: "+err.Error(),
+				"Error updating resource pool",
+				"Could not update resource pool, unexpected error: "+err.Error(),
 			)
 			return
 		}
@@ -317,8 +317,8 @@ func (r *poolResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 	err := r.changePoolMembers(ctx, state.ID.ValueString(), nil, state.Members, true)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error deleting pool",
-			"Could not delete pool, unexpected error: "+err.Error(),
+			"Error deleting resource pool",
+			"Could not delete resource pool, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -327,8 +327,8 @@ func (r *poolResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 	err = r.client.DeletePool(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error deleting pool",
-			"Could not delete pool, unexpected error: "+err.Error(),
+			"Error deleting resource pool",
+			"Could not delete resource pool, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -340,8 +340,8 @@ func (r *poolResource) ImportState(ctx context.Context, req resource.ImportState
 	model, err := r.readPoolModel(ctx, id)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error reading pool",
-			"Could not read pool, unexpected error: "+err.Error(),
+			"Error reading resource pool",
+			"Could not read resource pool, unexpected error: "+err.Error(),
 		)
 		return
 	}

@@ -1,4 +1,4 @@
-package pools
+package resource_pools
 
 import (
 	"context"
@@ -24,7 +24,7 @@ type poolsDataSource struct {
 }
 
 func (d *poolsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_pools"
+	resp.TypeName = req.ProviderTypeName + "_resource_pools"
 }
 
 func (d *poolsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
@@ -41,21 +41,21 @@ func (d *poolsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"filters": filter.Schema(),
-			"pools": schema.ListNestedAttribute{
+			"resource_pools": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
 							Computed:    true,
-							Description: "The id of the pool.",
+							Description: "The id of the resource pool.",
 						},
 						"comment": schema.StringAttribute{
 							Computed:    true,
-							Description: "Notes on the pool.",
+							Description: "Notes on the resource pool.",
 						},
 						"members": schema.ListNestedAttribute{
 							Computed:    true,
-							Description: "Resources that are part of the pool.",
+							Description: "Resources that are part of the resource pool.",
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"id": schema.StringAttribute{
@@ -87,7 +87,7 @@ func (d *poolsDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get pools",
-			"An error was encountered retrieving pools.\n"+
+			"An error was encountered retrieving resource pools.\n"+
 				err.Error(),
 		)
 		return
