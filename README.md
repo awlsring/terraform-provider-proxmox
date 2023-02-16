@@ -17,13 +17,30 @@ Currently this is very early in development and isn't suitable for use yet. Many
 * Nodes
 * Virtual Machines
 * Templates
-* Storage
+* Storage class LVM
+* Storage class LVM Thinpool
+* Storage class NFS
+* Storage class ZFS
+* Node storage ZFS
+* Node storage NFS
+* Node storage LVM
+* Node storage LVM Thinpool
+* LVM Thinpool
+* LVM
+* ZFS pool
 
 #### Resource
 
 * Resource pool
 * Network bond
 * Network bridge
+* LVM
+* LVM Thinpool
+* ZFS pool
+* Storage class LVM
+* Storage class LVM Thinpool
+* Storage class NFS
+* Storage class ZFS
 
 ## Planned resources
 
@@ -36,6 +53,5 @@ Currently this is very early in development and isn't suitable for use yet. Many
 ### Resource
 
 * Virtual Machine
-* Storage
 * User
 * Group
