@@ -17,7 +17,7 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/nodes"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/templates"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/resource_pools"
+	resource_pools "github.com/awlsring/terraform-provider-proxmox/proxmox/resource-pools"
 	lvm_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/lvm"
 	lvmthin_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/lvmthin"
 	nfs_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/nfs"
