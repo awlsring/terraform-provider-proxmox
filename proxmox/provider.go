@@ -10,6 +10,9 @@ import (
 	zfs_pool "github.com/awlsring/terraform-provider-proxmox/proxmox/local-storage/zfs"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/network/bonds"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/network/bridges"
+	lvm_node "github.com/awlsring/terraform-provider-proxmox/proxmox/node-storage/lvm"
+	lvmthin_node "github.com/awlsring/terraform-provider-proxmox/proxmox/node-storage/lvmthin"
+	nfs_node "github.com/awlsring/terraform-provider-proxmox/proxmox/node-storage/nfs"
 	zfs_node "github.com/awlsring/terraform-provider-proxmox/proxmox/node-storage/zfs"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/nodes"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/pools"
@@ -17,7 +20,7 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms"
 	lvm_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/lvm"
 	lvmthin_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/lvmthin"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/nfs"
+	nfs_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/nfs"
 	zfs_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/zfs"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -192,7 +195,7 @@ func (p *ProxmoxProvider) Resources(ctx context.Context) []func() resource.Resou
 		lvmthin.Resource,
 		lvm.Resource,
 		zfs_storage_class.Resource,
-		nfs.Resource,
+		nfs_storage_class.Resource,
 		lvm_storage_class.Resource,
 		lvmthin_storage_class.Resource,
 	}
@@ -207,11 +210,14 @@ func (p *ProxmoxProvider) DataSources(ctx context.Context) []func() datasource.D
 		vms.DataSource,
 		templates.DataSource,
 		zfs_pool.DataSource,
-		zfs_storage_class.DataSource,
-		zfs_node.DataSource,
 		lvmthin.DataSource,
 		lvm.DataSource,
-		nfs.DataSource,
+		zfs_node.DataSource,
+		nfs_node.DataSource,
+		lvm_node.DataSource,
+		lvmthin_node.DataSource,
+		zfs_storage_class.DataSource,
+		nfs_storage_class.DataSource,
 		lvm_storage_class.DataSource,
 		lvmthin_storage_class.DataSource,
 	}

@@ -23,11 +23,11 @@ var dataSourceSchema = ds.Schema{
 					},
 					"volume_group": ds.StringAttribute{
 						Computed:    true,
-						Description: "The NFS server used in the storage class.",
+						Description: "The path the volume group used by the thinpool.",
 					},
 					"thinpool": ds.StringAttribute{
 						Computed:    true,
-						Description: "The local mount of the NFS share that should be implemented by each node.",
+						Description: "The thinpools name.",
 					},
 					"nodes": ds.ListAttribute{
 						Computed:    true,

@@ -40,7 +40,7 @@ Read-Only:
 - `content_types` (List of String) The content types that can be stored on this storage class.
 - `id` (String) The identifier of the storage class.
 - `nodes` (List of String) Nodes that implement this storage class.
-- `thinpool` (String) The local mount of the NFS share that should be implemented by each node.
-- `volume_group` (String) The NFS server used in the storage class.
+- `thinpool` (String) The thinpools name.
+- `volume_group` (String) The path the volume group used by the thinpool.
 
 

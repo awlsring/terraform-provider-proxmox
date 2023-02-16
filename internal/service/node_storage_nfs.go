@@ -6,32 +6,33 @@ import (
 	"github.com/awlsring/proxmox-go/proxmox"
 )
 
-type ZFSNodeStorage struct {
+type NFSNodeStorage struct {
 	Id           string
 	Node         string
 	Storage      string
 	ContentTypes []string
 	Size         int64
-	ZFSPool      string
+	Server       string
 	Mount        string
+	Export       string
 }
 
-func (c *Proxmox) DescribeZFSNodeStorage(ctx context.Context, node string) ([]*ZFSNodeStorage, error) {
+func (c *Proxmox) DescribeNFSNodeStorage(ctx context.Context, node string) ([]*NFSNodeStorage, error) {
 	nodeStorage, err := c.ListNodeStorage(ctx, node)
 	if err != nil {
 		return nil, err
 	}
 
-	storageList := []*ZFSNodeStorage{}
+	storageList := []*NFSNodeStorage{}
 	for _, s := range nodeStorage {
-		if s.Type != proxmox.STORAGETYPE_ZFSPOOL || s.Enabled == nil {
+		if s.Type != proxmox.STORAGETYPE_NFS || s.Enabled == nil {
 			continue
 		}
 		if *s.Enabled != 1 {
 			continue
 		}
 
-		s := &ZFSNodeStorage{
+		s := &NFSNodeStorage{
 			Id:           s.Storage,
 			Node:         node,
 			Storage:      s.Storage,
@@ -42,11 +43,12 @@ func (c *Proxmox) DescribeZFSNodeStorage(ctx context.Context, node string) ([]*Z
 	}
 
 	for _, s := range storageList {
-		storage, err := c.GetZFSStorageClass(ctx, s.Storage)
+		storage, err := c.GetNFSStorageClass(ctx, s.Storage)
 		if err != nil {
 			return nil, err
 		}
-		s.ZFSPool = PtrStringToString(&storage.ZFSPool)
+		s.Server = storage.Server
+		s.Export = storage.Export
 		s.Mount = storage.Mount
 	}
 

@@ -6,32 +6,32 @@ import (
 	"github.com/awlsring/proxmox-go/proxmox"
 )
 
-type ZFSNodeStorage struct {
+type LVMThinNodeStorage struct {
 	Id           string
 	Node         string
 	Storage      string
 	ContentTypes []string
 	Size         int64
-	ZFSPool      string
-	Mount        string
+	VolumeGroup  string
+	Thinpool     string
 }
 
-func (c *Proxmox) DescribeZFSNodeStorage(ctx context.Context, node string) ([]*ZFSNodeStorage, error) {
+func (c *Proxmox) DescribeLVMThinNodeStorage(ctx context.Context, node string) ([]*LVMThinNodeStorage, error) {
 	nodeStorage, err := c.ListNodeStorage(ctx, node)
 	if err != nil {
 		return nil, err
 	}
 
-	storageList := []*ZFSNodeStorage{}
+	storageList := []*LVMThinNodeStorage{}
 	for _, s := range nodeStorage {
-		if s.Type != proxmox.STORAGETYPE_ZFSPOOL || s.Enabled == nil {
+		if s.Type != proxmox.STORAGETYPE_LVMTHIN || s.Enabled == nil {
 			continue
 		}
 		if *s.Enabled != 1 {
 			continue
 		}
 
-		s := &ZFSNodeStorage{
+		s := &LVMThinNodeStorage{
 			Id:           s.Storage,
 			Node:         node,
 			Storage:      s.Storage,
@@ -42,12 +42,12 @@ func (c *Proxmox) DescribeZFSNodeStorage(ctx context.Context, node string) ([]*Z
 	}
 
 	for _, s := range storageList {
-		storage, err := c.GetZFSStorageClass(ctx, s.Storage)
+		storage, err := c.GetLVMThinStorageClass(ctx, s.Storage)
 		if err != nil {
 			return nil, err
 		}
-		s.ZFSPool = PtrStringToString(&storage.ZFSPool)
-		s.Mount = storage.Mount
+		s.VolumeGroup = storage.VolumeGroup
+		s.Thinpool = storage.Thinpool
 	}
 
 	return storageList, nil
