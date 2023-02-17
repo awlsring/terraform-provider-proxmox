@@ -5,7 +5,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var Schema = schema.ListNestedAttribute{
+var DataSourceSchema = schema.ListNestedAttribute{
 	Computed: true,
 	NestedObject: schema.NestedAttributeObject{
 		Attributes: map[string]schema.Attribute{

@@ -49,7 +49,7 @@ func (d *virtualMachinesDataSource) Schema(_ context.Context, _ datasource.Schem
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"filters":          filter.Schema(),
-			"virtual_machines": qemu.Schema,
+			"virtual_machines": qemu.DataSourceSchema,
 		},
 	}
 }

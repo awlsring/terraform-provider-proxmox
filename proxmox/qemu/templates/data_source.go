@@ -49,7 +49,7 @@ func (d *templatesDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"filters":   filter.Schema(),
-			"templates": qemu.Schema,
+			"templates": qemu.DataSourceSchema,
 		},
 	}
 }
