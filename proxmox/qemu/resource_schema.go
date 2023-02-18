@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/numberplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -19,12 +20,12 @@ import (
 var ResourceSchema = schema.Schema{
 	Attributes: map[string]schema.Attribute{
 		// metadata
-		"id": schema.StringAttribute{
+		"id": schema.NumberAttribute{
 			Optional:    true,
 			Computed:    true,
 			Description: "The identifier of the virtual machine.",
-			PlanModifiers: []planmodifier.String{
-				stringplanmodifier.RequiresReplace(),
+			PlanModifiers: []planmodifier.Number{
+				numberplanmodifier.RequiresReplace(),
 			},
 		},
 		"node": schema.StringAttribute{
@@ -88,7 +89,6 @@ var ResourceSchema = schema.Schema{
 		},
 		"iso": schema.SingleNestedAttribute{
 			Optional:    true,
-			Computed:    true,
 			Description: "The operating system configuration.",
 			Attributes: map[string]schema.Attribute{
 				"storage": schema.StringAttribute{
@@ -378,7 +378,7 @@ var ResourceSchema = schema.Schema{
 						Optional:    true,
 						Description: "The rate limit of the network interface in megabytes per second.",
 					},
-					"vlan": schema.Int64Attribute{
+					"vlan": schema.NumberAttribute{
 						Optional:    true,
 						Description: "The VLAN tag of the network interface.",
 					},
