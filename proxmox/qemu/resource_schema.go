@@ -3,14 +3,16 @@ package qemu
 import (
 	"regexp"
 
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/defaults"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/numberplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -20,12 +22,12 @@ import (
 var ResourceSchema = schema.Schema{
 	Attributes: map[string]schema.Attribute{
 		// metadata
-		"id": schema.NumberAttribute{
+		"id": schema.Int64Attribute{
 			Optional:    true,
 			Computed:    true,
 			Description: "The identifier of the virtual machine.",
-			PlanModifiers: []planmodifier.Number{
-				numberplanmodifier.RequiresReplace(),
+			PlanModifiers: []planmodifier.Int64{
+				int64planmodifier.RequiresReplace(),
 			},
 		},
 		"node": schema.StringAttribute{
@@ -41,7 +43,6 @@ var ResourceSchema = schema.Schema{
 		},
 		"description": schema.StringAttribute{
 			Optional:    true,
-			Computed:    true,
 			Description: "The CPU description.",
 		},
 		"tags": schema.ListAttribute{
@@ -57,6 +58,9 @@ var ResourceSchema = schema.Schema{
 					path.MatchRoot("iso"),
 				}...),
 			},
+			PlanModifiers: []planmodifier.Object{
+				objectplanmodifier.RequiresReplace(),
+			},
 			Attributes: map[string]schema.Attribute{
 				"storage": schema.StringAttribute{
 					Optional:    true,
@@ -64,6 +68,7 @@ var ResourceSchema = schema.Schema{
 					Description: "The storage to place the clone on.",
 					PlanModifiers: []planmodifier.String{
 						stringplanmodifier.RequiresReplace(),
+						defaults.DefaultString("local"),
 					},
 				},
 				"source": schema.Int64Attribute{
@@ -83,6 +88,7 @@ var ResourceSchema = schema.Schema{
 					Description: "Whether to clone as a full or linked clone.",
 					PlanModifiers: []planmodifier.Bool{
 						boolplanmodifier.RequiresReplace(),
+						defaults.DefaultBool(true),
 					},
 				},
 			},
@@ -92,19 +98,27 @@ var ResourceSchema = schema.Schema{
 			Description: "The operating system configuration.",
 			Attributes: map[string]schema.Attribute{
 				"storage": schema.StringAttribute{
-					Optional:    true,
-					Computed:    true,
+					Required:    true,
 					Description: "The storage to place install media on.",
+					PlanModifiers: []planmodifier.String{
+						stringplanmodifier.RequiresReplace(),
+					},
 				},
 				"image": schema.StringAttribute{
 					Required:    true,
 					Description: "The image to use for install media.",
+					PlanModifiers: []planmodifier.String{
+						stringplanmodifier.RequiresReplace(),
+					},
 				},
 			},
 			Validators: []validator.Object{
 				objectvalidator.ConflictsWith(path.Expressions{
 					path.MatchRoot("clone"),
 				}...),
+			},
+			PlanModifiers: []planmodifier.Object{
+				objectplanmodifier.RequiresReplace(),
 			},
 		}, // method for installing from media
 		// "cloud_image": schema.SingleNestedAttribute{}, // will require some janky stuff to get working
@@ -114,16 +128,43 @@ var ResourceSchema = schema.Schema{
 			Optional:    true,
 			Computed:    true,
 			Description: "The agent configuration.",
+			PlanModifiers: []planmodifier.Object{
+				defaults.DefaultObject(map[string]attr.Value{
+					"enabled":    types.BoolValue(true),
+					"use_fstrim": types.BoolValue(false),
+					"type":       types.StringValue("virtio"),
+				}),
+			},
 			Attributes: map[string]schema.Attribute{
 				"enabled": schema.BoolAttribute{
 					Optional:    true,
 					Computed:    true,
 					Description: "Whether the agent is enabled.",
+					PlanModifiers: []planmodifier.Bool{
+						defaults.DefaultBool(true),
+					},
 				},
 				"use_fstrim": schema.BoolAttribute{
 					Optional:    true,
 					Computed:    true,
 					Description: "Whether to use fstrim.",
+					PlanModifiers: []planmodifier.Bool{
+						defaults.DefaultBool(true),
+					},
+				},
+				"type": schema.StringAttribute{
+					Optional:    true,
+					Computed:    true,
+					Description: "The guest agent type.",
+					Validators: []validator.String{
+						stringvalidator.OneOf(
+							"virtio",
+							"isa",
+						),
+					},
+					PlanModifiers: []planmodifier.String{
+						defaults.DefaultString("virtio"),
+					},
 				},
 			},
 		},
@@ -137,43 +178,61 @@ var ResourceSchema = schema.Schema{
 					"ovmf",
 				),
 			},
+			PlanModifiers: []planmodifier.String{
+				defaults.DefaultString("seabios"),
+			},
 		},
 		"cpu": schema.SingleNestedAttribute{
 			Optional:    true,
 			Computed:    true,
-			Description: "",
+			Description: "The CPU configuration.",
+			PlanModifiers: []planmodifier.Object{
+				defaults.DefaultObject(map[string]attr.Value{
+					"architecture":  types.StringValue("x86_64"),
+					"cores":         types.Int64Value(1),
+					"sockets":       types.Int64Value(1),
+					"emulated_type": types.StringValue("kvm64"),
+					"cpu_units":     types.Int64Value(100),
+				}),
+			},
 			Attributes: map[string]schema.Attribute{
 				"architecture": schema.StringAttribute{
 					Optional:    true,
 					Computed:    true,
 					Description: "The CPU architecture.",
-					// PlanModifiers: []planmodifier.String{
-					// 	stringplanmodifier.RequiresReplace(),
-					// },
 					Validators: []validator.String{
 						stringvalidator.OneOf(
 							"x86_64",
 							"aarch64",
 						),
 					},
+					PlanModifiers: []planmodifier.String{
+						defaults.DefaultString("x86_64"),
+					},
 				},
 				"cores": schema.Int64Attribute{
 					Optional:    true,
 					Computed:    true,
 					Description: "The number of CPU cores.",
-					// PlanModifiers: []planmodifier.Int64{
-					// 	int64planmodifier.RequiresReplace(),
-					// },
+					PlanModifiers: []planmodifier.Int64{
+						defaults.DefaultInt64(1),
+					},
 				},
 				"sockets": schema.Int64Attribute{
 					Optional:    true,
 					Computed:    true,
 					Description: "The number of CPU sockets.",
+					PlanModifiers: []planmodifier.Int64{
+						defaults.DefaultInt64(1),
+					},
 				},
 				"emulated_type": schema.StringAttribute{
 					Optional:    true,
 					Computed:    true,
 					Description: "The emulated CPU type.",
+					PlanModifiers: []planmodifier.String{
+						defaults.DefaultString("kvm64"),
+					},
 					Validators: []validator.String{
 						stringvalidator.OneOf(
 							"486",
@@ -230,17 +289,22 @@ var ResourceSchema = schema.Schema{
 					Optional:    true,
 					Computed:    true,
 					Description: "The CPU units.",
+					PlanModifiers: []planmodifier.Int64{
+						defaults.DefaultInt64(100),
+					},
 				},
 			},
 		},
 		"disks": schema.ListNestedAttribute{
 			Optional: true,
 			Computed: true,
+			PlanModifiers: []planmodifier.List{
+				defaults.DefaultList([]attr.Value{}),
+			},
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"storage": schema.StringAttribute{
-						Computed:    true,
-						Optional:    true,
+						Required:    true,
 						Description: "The storage the disk is on.",
 					},
 					"file_format": schema.StringAttribute{
@@ -254,19 +318,25 @@ var ResourceSchema = schema.Schema{
 								"vmdk",
 							),
 						},
+						PlanModifiers: []planmodifier.String{
+							defaults.DefaultString("qcow2"),
+						},
 					},
 					"size": schema.Int64Attribute{
-						Computed:    true,
-						Optional:    true,
+						Required:    true,
 						Description: "The size of the disk in bytes.",
 					},
 					"use_iothread": schema.BoolAttribute{
 						Optional:    true,
+						Computed:    true,
 						Description: "Whether to use an iothread for the disk.",
+						PlanModifiers: []planmodifier.Bool{
+							defaults.DefaultBool(false),
+						},
 					},
 					"speed_limits": schema.SingleNestedAttribute{
 						Optional:    true,
-						Description: "The speed limits of the disk.",
+						Description: "The speed limits of the disk. If not set, no speed limitations are applied.",
 						Attributes: map[string]schema.Attribute{
 							"read": schema.Int64Attribute{
 								Optional:    true,
@@ -280,11 +350,14 @@ var ResourceSchema = schema.Schema{
 								Optional:    true,
 								Description: "The write burstable speed limit in bytes per second.",
 							},
+							"read_burstable": schema.Int64Attribute{
+								Optional:    true,
+								Description: "The read burstable speed limit in bytes per second.",
+							},
 						},
 					},
 					"interface_type": schema.StringAttribute{
-						Computed:    true,
-						Optional:    true,
+						Required:    true,
 						Description: "The type of the disk.",
 						Validators: []validator.String{
 							stringvalidator.OneOf(
@@ -298,15 +371,21 @@ var ResourceSchema = schema.Schema{
 						Computed:    true,
 						Optional:    true,
 						Description: "Whether to use SSD emulation. conflicts with virtio disk type.",
+						PlanModifiers: []planmodifier.Bool{
+							defaults.DefaultBool(false),
+						},
 					},
-					"position": schema.StringAttribute{
-						Computed:    true,
-						Description: "The position of the disk. (virtio0, scsi0, etc)",
+					"position": schema.Int64Attribute{
+						Required:    true,
+						Description: "The position of the disk. (0, 1, 2, etc.) This is combined with the `interface_type` to determine the disk name.",
 					},
 					"discard": schema.BoolAttribute{
 						Computed:    true,
 						Optional:    true,
 						Description: "Whether the disk has discard enabled.",
+						PlanModifiers: []planmodifier.Bool{
+							defaults.DefaultBool(true),
+						},
 					},
 				},
 			},
@@ -326,7 +405,11 @@ var ResourceSchema = schema.Schema{
 					},
 					"pcie": schema.BoolAttribute{
 						Optional:    true,
+						Computed:    true,
 						Description: "Whether the PCI device is PCIe.",
+						PlanModifiers: []planmodifier.Bool{
+							defaults.DefaultBool(false),
+						},
 					},
 					"mdev": schema.StringAttribute{
 						Optional:    true,
@@ -338,6 +421,9 @@ var ResourceSchema = schema.Schema{
 		"network_interfaces": schema.ListNestedAttribute{
 			Optional: true,
 			Computed: true,
+			PlanModifiers: []planmodifier.List{
+				defaults.DefaultList([]attr.Value{}),
+			},
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"bridge": schema.StringAttribute{
@@ -352,6 +438,9 @@ var ResourceSchema = schema.Schema{
 						Optional:    true,
 						Computed:    true,
 						Description: "Whether the network interface is enabled.",
+						PlanModifiers: []planmodifier.Bool{
+							defaults.DefaultBool(true),
+						},
 					},
 					"mac_address": schema.StringAttribute{
 						Computed:    true,
@@ -365,6 +454,9 @@ var ResourceSchema = schema.Schema{
 						Computed:    true,
 						Optional:    true,
 						Description: "The model of the network interface.",
+						PlanModifiers: []planmodifier.String{
+							defaults.DefaultString("virtio"),
+						},
 						Validators: []validator.String{
 							stringvalidator.OneOf(
 								"virtio",
@@ -392,21 +484,29 @@ var ResourceSchema = schema.Schema{
 		"memory": schema.SingleNestedAttribute{
 			Optional: true,
 			Computed: true,
+			PlanModifiers: []planmodifier.Object{
+				defaults.DefaultObject(map[string]attr.Value{
+					"dedicated": types.Int64Value(1024),
+					"floating":  types.Int64Null(),
+					"shared":    types.Int64Null(),
+				}),
+			},
 			Attributes: map[string]schema.Attribute{
 				"dedicated": schema.Int64Attribute{
 					Computed:    true,
 					Optional:    true,
-					Description: "The size of the memory in bytes.",
+					Description: "The size of the memory in MB.",
+					PlanModifiers: []planmodifier.Int64{
+						defaults.DefaultInt64(1024),
+					},
 				},
 				"floating": schema.Int64Attribute{
-					Computed:    true,
 					Optional:    true,
-					Description: "The floating memory in bytes.",
+					Description: "The floating memory in MB.",
 				},
 				"shared": schema.Int64Attribute{
-					Computed:    true,
 					Optional:    true,
-					Description: "The shared memory in bytes.",
+					Description: "The shared memory in MB.",
 				},
 			},
 		},
@@ -420,6 +520,9 @@ var ResourceSchema = schema.Schema{
 					"q35",
 				),
 			},
+			PlanModifiers: []planmodifier.String{
+				defaults.DefaultString("q35"),
+			},
 		},
 		"kvm_arguments": schema.StringAttribute{
 			Optional:    true,
@@ -427,7 +530,11 @@ var ResourceSchema = schema.Schema{
 		},
 		"keyboard_layout": schema.StringAttribute{
 			Optional:    true,
+			Computed:    true,
 			Description: "The keyboard layout.",
+			PlanModifiers: []planmodifier.String{
+				defaults.DefaultString("en-us"),
+			},
 			Validators: []validator.String{
 				stringvalidator.OneOf(
 					"da",
@@ -484,7 +591,6 @@ var ResourceSchema = schema.Schema{
 						"v4": schema.SingleNestedAttribute{
 							Optional: true,
 							Attributes: map[string]schema.Attribute{
-								// conflict with address
 								"dhcp": schema.BoolAttribute{
 									Optional:    true,
 									Description: "Whether to use DHCP to get the IP address.",
@@ -502,7 +608,6 @@ var ResourceSchema = schema.Schema{
 						"v6": schema.SingleNestedAttribute{
 							Optional: true,
 							Attributes: map[string]schema.Attribute{
-								// conflict with address
 								"dhcp": schema.BoolAttribute{
 									Optional:    true,
 									Description: "Whether to use DHCP to get the IP address.",
@@ -538,6 +643,9 @@ var ResourceSchema = schema.Schema{
 			Optional:    true,
 			Computed:    true,
 			Description: "The operating system type.",
+			PlanModifiers: []planmodifier.String{
+				defaults.DefaultString("other"),
+			},
 			Validators: []validator.String{
 				stringvalidator.OneOf(
 					"l24",
@@ -562,12 +670,19 @@ var ResourceSchema = schema.Schema{
 		},
 		"start_on_create": schema.BoolAttribute{
 			Optional:    true,
+			Computed:    true,
 			Description: "Whether to start the virtual machine on creation.",
+			PlanModifiers: []planmodifier.Bool{
+				defaults.DefaultBool(true),
+			},
 		},
 		"start_on_node_boot": schema.BoolAttribute{
 			Optional:    true,
 			Computed:    true,
 			Description: "Whether to start the virtual machine on node boot.",
+			PlanModifiers: []planmodifier.Bool{
+				defaults.DefaultBool(true),
+			},
 		},
 		"timeouts": schema.SingleNestedAttribute{
 			Optional: true,

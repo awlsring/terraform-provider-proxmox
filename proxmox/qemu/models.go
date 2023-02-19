@@ -1,14 +1,11 @@
 package qemu
 
 import (
-	"context"
-
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type VirtualMachineResourceModel struct {
-	ID                types.Number                            `tfsdk:"id"`
+	ID                types.Int64                             `tfsdk:"id"`
 	Node              types.String                            `tfsdk:"node"`
 	Name              types.String                            `tfsdk:"name"`
 	Description       types.String                            `tfsdk:"description"`
@@ -44,13 +41,10 @@ type VirtualMachineIsoOptions struct {
 	Image   *types.String `tfsdk:"image"`
 }
 
-func (c VirtualMachineIsoOptions) DoSomething(ctx context.Context) {
-	tflog.Info(ctx, "called DoSomething on CustomListValue")
-}
-
 type VirtualMachineAgentOptions struct {
-	Enabled   types.Bool `tfsdk:"enabled"`
-	UseFSTrim types.Bool `tfsdk:"use_fstrim"`
+	Enabled   types.Bool   `tfsdk:"enabled"`
+	UseFSTrim types.Bool   `tfsdk:"use_fstrim"`
+	Type      types.String `tfsdk:"type"`
 }
 
 type VirtualMachineCpuOptions struct {
@@ -69,12 +63,13 @@ type VirtualMachineDiskOptions struct {
 	SpeedLimits   *VirtualMachineDiskSpeedLimits `tfsdk:"speed_limits"`
 	InterfaceType types.String                   `tfsdk:"interface_type"`
 	SSDEmulation  types.Bool                     `tfsdk:"ssd_emulation"`
-	Position      types.String                   `tfsdk:"position"`
+	Position      types.Int64                    `tfsdk:"position"`
 	Discard       types.Bool                     `tfsdk:"discard"`
 }
 
 type VirtualMachineDiskSpeedLimits struct {
 	Read           types.Int64 `tfsdk:"read"`
+	ReadBurstable  types.Int64 `tfsdk:"read_burstable"`
 	Write          types.Int64 `tfsdk:"write"`
 	WriteBurstable types.Int64 `tfsdk:"write_burstable"`
 }
@@ -98,8 +93,8 @@ type VirtualMachineNetworkInterfaceOptions struct {
 
 type VirtualMachineMemoryOptions struct {
 	Dedicated types.Int64 `tfsdk:"dedicated"`
-	Shared    types.Int64 `tfsdk:"shared"`
 	Floating  types.Int64 `tfsdk:"floating"`
+	Shared    types.Int64 `tfsdk:"shared"`
 }
 
 type VirtualMachineCloudInitOptions struct {
