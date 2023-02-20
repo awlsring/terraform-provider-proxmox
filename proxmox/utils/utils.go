@@ -39,6 +39,14 @@ func UnpackListType(l []string) types.List {
 	return t
 }
 
+func ListTypeToStringSlice(l types.List) []string {
+	var r []string
+	for _, s := range l.Elements() {
+		r = append(r, s.(types.String).ValueString())
+	}
+	return r
+}
+
 func ListContains(s []string, str string) bool {
 	for _, v := range s {
 		if v == str {
@@ -55,6 +63,24 @@ func OptionalToPointerString(s string) *string {
 	}
 
 	return &s
+}
+
+func OptionaInt64ToPointerInt(i64 int64) *int {
+	if i64 == 0 {
+		return nil
+	}
+
+	i := int(i64)
+
+	return &i
+}
+
+func OptionaToPointerInt64(i64 int64) *int64 {
+	if i64 == 0 {
+		return nil
+	}
+
+	return &i64
 }
 
 func OptionalToPointerBool(b bool) *bool {
