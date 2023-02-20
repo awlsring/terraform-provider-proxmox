@@ -4,6 +4,7 @@ import (
 	"regexp"
 
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/defaults"
+	t "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -47,6 +48,7 @@ var ResourceSchema = schema.Schema{
 		},
 		"tags": schema.ListAttribute{
 			Optional:    true,
+			Computed:    true,
 			Description: "The tags of the virtual machine.",
 			ElementType: types.StringType,
 		},
@@ -296,11 +298,9 @@ var ResourceSchema = schema.Schema{
 			},
 		},
 		"disks": schema.ListNestedAttribute{
-			Optional: true,
-			Computed: true,
-			PlanModifiers: []planmodifier.List{
-				defaults.DefaultList([]attr.Value{}),
-			},
+			Optional:   true,
+			Computed:   true,
+			CustomType: t.NewVirtualMachineDiskListType(),
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"storage": schema.StringAttribute{
@@ -319,12 +319,12 @@ var ResourceSchema = schema.Schema{
 							),
 						},
 						PlanModifiers: []planmodifier.String{
-							defaults.DefaultString("qcow2"),
+							defaults.DefaultString("raw"),
 						},
 					},
 					"size": schema.Int64Attribute{
 						Required:    true,
-						Description: "The size of the disk in bytes.",
+						Description: "The size of the disk in GiB.",
 					},
 					"use_iothread": schema.BoolAttribute{
 						Optional:    true,
@@ -419,11 +419,9 @@ var ResourceSchema = schema.Schema{
 			},
 		},
 		"network_interfaces": schema.ListNestedAttribute{
-			Optional: true,
-			Computed: true,
-			PlanModifiers: []planmodifier.List{
-				defaults.DefaultList([]attr.Value{}),
-			},
+			Optional:   true,
+			Computed:   true,
+			CustomType: t.NewVirtualMachineNetworkInterfaceListType(),
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"bridge": schema.StringAttribute{
@@ -440,6 +438,14 @@ var ResourceSchema = schema.Schema{
 						Description: "Whether the network interface is enabled.",
 						PlanModifiers: []planmodifier.Bool{
 							defaults.DefaultBool(true),
+						},
+					},
+					"use_firewall": schema.BoolAttribute{
+						Optional:    true,
+						Computed:    true,
+						Description: "Whether the firewall for the network interface is enabled.",
+						PlanModifiers: []planmodifier.Bool{
+							defaults.DefaultBool(false),
 						},
 					},
 					"mac_address": schema.StringAttribute{
@@ -470,7 +476,11 @@ var ResourceSchema = schema.Schema{
 						Optional:    true,
 						Description: "The rate limit of the network interface in megabytes per second.",
 					},
-					"vlan": schema.NumberAttribute{
+					"position": schema.Int64Attribute{
+						Optional:    true,
+						Description: "The position of the network interface in the VM. (0, 1, 2, etc.)",
+					},
+					"vlan": schema.Int64Attribute{
 						Optional:    true,
 						Description: "The VLAN tag of the network interface.",
 					},
@@ -503,10 +513,16 @@ var ResourceSchema = schema.Schema{
 				"floating": schema.Int64Attribute{
 					Optional:    true,
 					Description: "The floating memory in MB.",
+					PlanModifiers: []planmodifier.Int64{
+						defaults.DefaultInt64Null(),
+					},
 				},
 				"shared": schema.Int64Attribute{
 					Optional:    true,
 					Description: "The shared memory in MB.",
+					PlanModifiers: []planmodifier.Int64{
+						defaults.DefaultInt64Null(),
+					},
 				},
 			},
 		},
@@ -585,40 +601,50 @@ var ResourceSchema = schema.Schema{
 						},
 					},
 				},
-				"ip": schema.SingleNestedAttribute{
+				"ip": schema.ListNestedAttribute{
 					Optional: true,
-					Attributes: map[string]schema.Attribute{
-						"v4": schema.SingleNestedAttribute{
-							Optional: true,
-							Attributes: map[string]schema.Attribute{
-								"dhcp": schema.BoolAttribute{
-									Optional:    true,
-									Description: "Whether to use DHCP to get the IP address.",
-								},
-								"address": schema.StringAttribute{
-									Optional:    true,
-									Description: "The IP address to use for the machine.",
-								},
-								"gateway": schema.StringAttribute{
-									Optional:    true,
-									Description: "The gateway to use for the machine.",
+					NestedObject: schema.NestedAttributeObject{
+						Attributes: map[string]schema.Attribute{
+							"v4": schema.SingleNestedAttribute{
+								Optional: true,
+								Attributes: map[string]schema.Attribute{
+									"dhcp": schema.BoolAttribute{
+										Optional:    true,
+										Description: "Whether to use DHCP to get the IP address.",
+									},
+									"address": schema.StringAttribute{
+										Optional:    true,
+										Description: "The IP address to use for the machine.",
+									},
+									"netmask": schema.StringAttribute{
+										Optional:    true,
+										Description: "The IP address netmask to use for the machine.",
+									},
+									"gateway": schema.StringAttribute{
+										Optional:    true,
+										Description: "The gateway to use for the machine.",
+									},
 								},
 							},
-						},
-						"v6": schema.SingleNestedAttribute{
-							Optional: true,
-							Attributes: map[string]schema.Attribute{
-								"dhcp": schema.BoolAttribute{
-									Optional:    true,
-									Description: "Whether to use DHCP to get the IP address.",
-								},
-								"address": schema.StringAttribute{
-									Optional:    true,
-									Description: "The IP address to use for the machine.",
-								},
-								"gateway": schema.StringAttribute{
-									Optional:    true,
-									Description: "The gateway to use for the machine.",
+							"v6": schema.SingleNestedAttribute{
+								Optional: true,
+								Attributes: map[string]schema.Attribute{
+									"dhcp": schema.BoolAttribute{
+										Optional:    true,
+										Description: "Whether to use DHCP to get the IP address.",
+									},
+									"address": schema.StringAttribute{
+										Optional:    true,
+										Description: "The IP address to use for the machine.",
+									},
+									"netmask": schema.StringAttribute{
+										Optional:    true,
+										Description: "The IP address netmask to use for the machine.",
+									},
+									"gateway": schema.StringAttribute{
+										Optional:    true,
+										Description: "The gateway to use for the machine.",
+									},
 								},
 							},
 						},

@@ -1,33 +1,76 @@
 package qemu
 
 import (
+	"context"
+
+	"github.com/awlsring/terraform-provider-proxmox/internal/service"
+	"github.com/awlsring/terraform-provider-proxmox/internal/service/vm"
+	t "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 type VirtualMachineResourceModel struct {
-	ID                types.Int64                             `tfsdk:"id"`
-	Node              types.String                            `tfsdk:"node"`
-	Name              types.String                            `tfsdk:"name"`
-	Description       types.String                            `tfsdk:"description"`
-	Tags              []types.String                          `tfsdk:"tags"`
-	Clone             *VirtualMachineCloneOptions             `tfsdk:"clone"`
-	ISO               *VirtualMachineIsoOptions               `tfsdk:"iso"`
-	Agent             *VirtualMachineAgentOptions             `tfsdk:"agent"`
-	BIOS              types.String                            `tfsdk:"bios"`
-	CPU               *VirtualMachineCpuOptions               `tfsdk:"cpu"`
-	Disks             []VirtualMachineDiskOptions             `tfsdk:"disks"`
-	PCIDevices        []VirtualMachinePciDeviceOptions        `tfsdk:"pci_devices"`
-	NetworkInterfaces []VirtualMachineNetworkInterfaceOptions `tfsdk:"network_interfaces"`
-	Memory            *VirtualMachineMemoryOptions            `tfsdk:"memory"`
-	MachineType       types.String                            `tfsdk:"machine_type"`
-	KVMArguments      types.String                            `tfsdk:"kvm_arguments"`
-	KeyboardLayout    types.String                            `tfsdk:"keyboard_layout"`
-	CloudInit         *VirtualMachineCloudInitOptions         `tfsdk:"cloud_init"`
-	Type              types.String                            `tfsdk:"type"`
-	ResourcePool      types.String                            `tfsdk:"resource_pool"`
-	StartOnCreate     types.Bool                              `tfsdk:"start_on_create"`
-	StartOnNodeBoot   types.Bool                              `tfsdk:"start_on_node_boot"`
-	Timeouts          *VirtualMachineTerraformTimeouts        `tfsdk:"timeouts"`
+	ID                types.Int64                               `tfsdk:"id"`
+	Node              types.String                              `tfsdk:"node"`
+	Name              types.String                              `tfsdk:"name"`
+	Description       types.String                              `tfsdk:"description"`
+	Tags              types.List                                `tfsdk:"tags"`
+	Clone             *VirtualMachineCloneOptions               `tfsdk:"clone"`
+	ISO               *VirtualMachineIsoOptions                 `tfsdk:"iso"`
+	Agent             *VirtualMachineAgentOptions               `tfsdk:"agent"`
+	BIOS              types.String                              `tfsdk:"bios"`
+	CPU               VirtualMachineCpuOptions                  `tfsdk:"cpu"`
+	Disks             t.VirtualMachineDiskListValue             `tfsdk:"disks"`
+	PCIDevices        []VirtualMachinePciDeviceOptions          `tfsdk:"pci_devices"`
+	NetworkInterfaces t.VirtualMachineNetworkInterfaceListValue `tfsdk:"network_interfaces"`
+	Memory            VirtualMachineMemoryOptions               `tfsdk:"memory"`
+	MachineType       types.String                              `tfsdk:"machine_type"`
+	KVMArguments      types.String                              `tfsdk:"kvm_arguments"`
+	KeyboardLayout    types.String                              `tfsdk:"keyboard_layout"`
+	CloudInit         *VirtualMachineCloudInitOptions           `tfsdk:"cloud_init"`
+	Type              types.String                              `tfsdk:"type"`
+	ResourcePool      types.String                              `tfsdk:"resource_pool"`
+	StartOnCreate     types.Bool                                `tfsdk:"start_on_create"`
+	StartOnNodeBoot   types.Bool                                `tfsdk:"start_on_node_boot"`
+	Timeouts          *VirtualMachineTerraformTimeouts          `tfsdk:"timeouts"`
+}
+
+func VMToModel(ctx context.Context, vm *service.VirtualMachine) VirtualMachineResourceModel {
+	m := VirtualMachineResourceModel{
+		ID:                types.Int64Value(int64(vm.VmId)),
+		Node:              types.StringValue(vm.Node),
+		Tags:              utils.UnpackListType(vm.Tags),
+		BIOS:              types.StringValue(string(vm.Bios)),
+		CPU:               VMCPUToModel(&vm.CPU),
+		Memory:            VMMemoryToModel(&vm.Memory),
+		Disks:             t.VirtualMachineDiskToListValue(ctx, vm.Disks),
+		NetworkInterfaces: t.VirtualMachineNetworkInterfaceToListValue(ctx, vm.NetworkInterfaces),
+	}
+
+	if vm.Name != nil {
+		m.Name = types.StringValue(*vm.Name)
+	}
+
+	if vm.OsType != nil {
+		m.Type = types.StringValue(string(*vm.OsType))
+	}
+
+	if vm.MachineType != nil {
+		m.MachineType = types.StringValue(string(*vm.MachineType))
+	}
+
+	if vm.KeyboardLayout != nil {
+		kl := string(*vm.KeyboardLayout)
+		m.KeyboardLayout = types.StringValue(kl)
+	}
+
+	if vm.Agent != nil {
+		a := VMAgentToModel(vm.Agent)
+		m.Agent = &a
+	}
+
+	return m
 }
 
 type VirtualMachineCloneOptions struct {
@@ -47,6 +90,17 @@ type VirtualMachineAgentOptions struct {
 	Type      types.String `tfsdk:"type"`
 }
 
+func VMAgentToModel(agent *vm.VirtualMachineAgent) VirtualMachineAgentOptions {
+	m := VirtualMachineAgentOptions{
+		Enabled:   types.BoolValue(agent.Enabled),
+		UseFSTrim: types.BoolValue(agent.FsTrim),
+	}
+	if agent.Type != nil {
+		m.Type = types.StringValue(string(*agent.Type))
+	}
+	return m
+}
+
 type VirtualMachineCpuOptions struct {
 	Architecture types.String `tfsdk:"architecture"`
 	Cores        types.Int64  `tfsdk:"cores"`
@@ -55,16 +109,20 @@ type VirtualMachineCpuOptions struct {
 	CPUUnits     types.Int64  `tfsdk:"cpu_units"`
 }
 
-type VirtualMachineDiskOptions struct {
-	Storage       types.String                   `tfsdk:"storage"`
-	FileFormat    types.String                   `tfsdk:"file_format"`
-	Size          types.Int64                    `tfsdk:"size"`
-	UseIOThread   types.Bool                     `tfsdk:"use_iothread"`
-	SpeedLimits   *VirtualMachineDiskSpeedLimits `tfsdk:"speed_limits"`
-	InterfaceType types.String                   `tfsdk:"interface_type"`
-	SSDEmulation  types.Bool                     `tfsdk:"ssd_emulation"`
-	Position      types.Int64                    `tfsdk:"position"`
-	Discard       types.Bool                     `tfsdk:"discard"`
+func VMCPUToModel(cpu *vm.VirtualMachineCpu) VirtualMachineCpuOptions {
+	m := VirtualMachineCpuOptions{
+		Architecture: types.StringValue(string(cpu.Architecture)),
+		Cores:        types.Int64Value(int64(cpu.Cores)),
+		Sockets:      types.Int64Value(int64(cpu.Sockets)),
+	}
+	if cpu.EmulatedType != nil {
+		m.EmulatedType = types.StringValue(string(*cpu.EmulatedType))
+	}
+	if cpu.CpuUnits != nil {
+		m.CPUUnits = types.Int64Value(int64(*cpu.CpuUnits))
+	}
+
+	return m
 }
 
 type VirtualMachineDiskSpeedLimits struct {
@@ -81,25 +139,31 @@ type VirtualMachinePciDeviceOptions struct {
 	Mdev       types.String `tfsdk:"mdev"`
 }
 
-type VirtualMachineNetworkInterfaceOptions struct {
-	Bridge     types.String `tfsdk:"bridge"`
-	Enabled    types.Bool   `tfsdk:"enabled"`
-	MacAddress types.String `tfsdk:"mac_address"`
-	Model      types.String `tfsdk:"model"`
-	Vlan       types.Number `tfsdk:"vlan"`
-	RateLimit  types.Int64  `tfsdk:"rate_limit"`
-	MTU        types.Int64  `tfsdk:"mtu"`
-}
-
 type VirtualMachineMemoryOptions struct {
 	Dedicated types.Int64 `tfsdk:"dedicated"`
 	Floating  types.Int64 `tfsdk:"floating"`
 	Shared    types.Int64 `tfsdk:"shared"`
 }
 
+func VMMemoryToModel(memory *vm.VirtualMachineMemory) VirtualMachineMemoryOptions {
+	m := VirtualMachineMemoryOptions{
+		Dedicated: types.Int64Value(int64(memory.Dedicated)),
+	}
+
+	if memory.Floating != nil {
+		m.Floating = types.Int64Value(int64(*memory.Floating))
+	}
+
+	if memory.Shared != nil {
+		m.Shared = types.Int64Value(int64(*memory.Shared))
+	}
+
+	return m
+}
+
 type VirtualMachineCloudInitOptions struct {
 	User *VirtualMachineCloudInitUserOptions `tfsdk:"user"`
-	IP   *VirtualMachineCloudInitIpOptions   `tfsdk:"ip"`
+	IP   []VirtualMachineCloudInitIpOptions  `tfsdk:"ip"`
 	DNS  *VirtualMachineCloudInitDnsOptions  `tfsdk:"dns"`
 }
 
@@ -107,6 +171,72 @@ type VirtualMachineCloudInitUserOptions struct {
 	Name       types.String   `tfsdk:"name"`
 	Password   types.String   `tfsdk:"password"`
 	PublicKeys []types.String `tfsdk:"public_keys"`
+}
+
+func VMCloudInitToModel(cloudInit *vm.VirtualMachineCloudInit) VirtualMachineCloudInitOptions {
+	m := VirtualMachineCloudInitOptions{}
+
+	if cloudInit.User != nil {
+		m.User = &VirtualMachineCloudInitUserOptions{}
+		if cloudInit.User.Name != nil {
+			m.User.Name = types.StringValue(*cloudInit.User.Name)
+		}
+		if cloudInit.User.Password != nil {
+			m.User.Password = types.StringValue(*cloudInit.User.Password)
+		}
+		if cloudInit.User.PublicKeys != nil {
+			m.User.PublicKeys = []types.String{}
+			for _, key := range cloudInit.User.PublicKeys {
+				m.User.PublicKeys = append(m.User.PublicKeys, types.StringValue(key))
+			}
+		}
+	}
+
+	m.IP = []VirtualMachineCloudInitIpOptions{}
+	for _, ip := range cloudInit.Ip {
+		v4 := &VirtualMachineCloudInitIpConfigOptions{
+			DHCP: types.BoolValue(ip.V4.DHCP),
+		}
+		if ip.V4.Address != nil {
+			v4.Address = types.StringValue(*ip.V4.Address)
+		}
+		if ip.V4.Gateway != nil {
+			v4.Gateway = types.StringValue(*ip.V4.Gateway)
+		}
+		if ip.V4.Netmask != nil {
+			v4.Netmask = types.StringValue(*ip.V4.Netmask)
+		}
+
+		v6 := &VirtualMachineCloudInitIpConfigOptions{
+			DHCP: types.BoolValue(ip.V6.DHCP),
+		}
+		if ip.V6.Address != nil {
+			v6.Address = types.StringValue(*ip.V6.Address)
+		}
+		if ip.V6.Gateway != nil {
+			v6.Gateway = types.StringValue(*ip.V6.Gateway)
+		}
+		if ip.V6.Netmask != nil {
+			v6.Netmask = types.StringValue(*ip.V6.Netmask)
+		}
+		cfg := VirtualMachineCloudInitIpOptions{
+			V4: v4,
+			V6: v6,
+		}
+		m.IP = append(m.IP, cfg)
+	}
+
+	if cloudInit.Dns != nil {
+		m.DNS = &VirtualMachineCloudInitDnsOptions{}
+		if cloudInit.Dns.Nameserver != nil {
+			m.DNS.Nameserver = types.StringValue(*cloudInit.Dns.Nameserver)
+		}
+		if cloudInit.Dns.Domain != nil {
+			m.DNS.Domain = types.StringValue(*cloudInit.Dns.Domain)
+		}
+	}
+
+	return m
 }
 
 type VirtualMachineCloudInitIpOptions struct {
@@ -117,6 +247,7 @@ type VirtualMachineCloudInitIpOptions struct {
 type VirtualMachineCloudInitIpConfigOptions struct {
 	DHCP    types.Bool   `tfsdk:"dhcp"`
 	Address types.String `tfsdk:"address"`
+	Netmask types.String `tfsdk:"netmask"`
 	Gateway types.String `tfsdk:"gateway"`
 }
 
