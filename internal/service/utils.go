@@ -15,6 +15,22 @@ func BooleanIntegerConversion(i *float32) bool {
 	return *i != 0
 }
 
+func PtrIntToPtrFloat(i *int) *float32 {
+	if i == nil {
+		return nil
+	}
+	f := float32(*i)
+	return &f
+}
+
+func PtrInt64ToPtrFloat(i *int64) *float32 {
+	if i == nil {
+		return nil
+	}
+	f := float32(*i)
+	return &f
+}
+
 func StringSpaceListToSlice(s string) []string {
 	if s == "" {
 		return []string{}
@@ -34,6 +50,22 @@ func StringSliceToStringSpacePtr(l []string) *string {
 		return nil
 	}
 	s := strings.Join(l, " ")
+	return &s
+}
+
+func StringSliceToLinedString(l []string) string {
+	str := ""
+	for _, s := range l {
+		str = str + s + "\n"
+	}
+	return str
+}
+
+func StringSliceToLinedStringPtr(l []string) *string {
+	if len(l) == 0 {
+		return nil
+	}
+	s := StringSliceToLinedString(l)
 	return &s
 }
 
@@ -61,6 +93,17 @@ func StringSemiColonListToSlice(s string) []string {
 		return []string{}
 	}
 	return strings.Split(s, ";")
+}
+
+func SliceToStringSemiColonList(s []string) string {
+	return strings.Join(s, ";")
+}
+func SliceToStringSemiColonListPtr(s []string) *string {
+	if len(s) == 0 {
+		return nil
+	}
+	r := SliceToStringSemiColonList(s)
+	return &r
 }
 
 func StringSemiColonPtrListToSlice(s *string) []string {
