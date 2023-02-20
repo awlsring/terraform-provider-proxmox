@@ -22,6 +22,7 @@ type VirtualMachine struct {
 	OsType            *proxmox.VirtualMachineOperatingSystem
 	MachineType       *string
 	KVMArguments      *string
+	StartOnBoot       bool
 	KeyboardLayout    *proxmox.VirtualMachineKeyboard
 }
 
@@ -45,6 +46,7 @@ func (c *Proxmox) DescribeVirtualMachine(ctx context.Context, node string, vmid 
 		KeyboardLayout: vm.DetermineKeyboardLayout(configSummary.Keyboard),
 		Tags:           StringSemiColonPtrListToSlice(configSummary.Tags),
 		Name:           configSummary.Name,
+		StartOnBoot:    BooleanIntegerConversion(configSummary.Onboot),
 	}
 
 	diskConfig, err := vm.DetermineDiskConfiguration(configSummary)

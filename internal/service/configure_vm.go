@@ -24,6 +24,7 @@ type ConfigureVirtualMachineInput struct {
 	Memory            *ConfigureVirtualMachineMemoryOptions
 	CloudInit         *ConfigureVirtualMachineCloudInitOptions
 	OsType            *proxmox.VirtualMachineOperatingSystem
+	StartOnBoot       bool
 	MachineType       *string
 	KVMArguments      *string
 	KeyboardLayout    *proxmox.VirtualMachineKeyboard
@@ -230,6 +231,10 @@ func (c *Proxmox) ConfigureVirtualMachine(ctx context.Context, input *ConfigureV
 		content.Ciuser = input.CloudInit.User.Name
 		content.Cipassword = input.CloudInit.User.Password
 		content.Sshkeys = StringSliceToLinedStringPtr(input.CloudInit.User.PublicKeys)
+	}
+	if input.StartOnBoot {
+		onboot := float32(1)
+		content.Onboot = &onboot
 	}
 
 	for _, d := range input.Disk {
