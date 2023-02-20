@@ -38,3 +38,30 @@ func (m int64DefaultModifier) PlanModifyInt64(ctx context.Context, req planmodif
 type int64DefaultModifier struct {
 	Default int64
 }
+
+var _ planmodifier.Int64 = int64NullDefaultModifier{}
+
+func DefaultInt64Null() planmodifier.Int64 {
+	return int64NullDefaultModifier{}
+}
+
+func (m int64NullDefaultModifier) Description(ctx context.Context) string {
+	return "If value is not configured, defaults to null"
+}
+
+func (m int64NullDefaultModifier) MarkdownDescription(ctx context.Context) string {
+	return "If value is not configured, defaults to null"
+}
+
+func (m int64NullDefaultModifier) PlanModifyInt64(ctx context.Context, req planmodifier.Int64Request, resp *planmodifier.Int64Response) {
+	if !req.ConfigValue.IsNull() {
+		return
+	}
+
+	if !req.PlanValue.IsUnknown() && !req.PlanValue.IsNull() {
+		return
+	}
+	resp.PlanValue = types.Int64Null()
+}
+
+type int64NullDefaultModifier struct{}
