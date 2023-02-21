@@ -2,12 +2,14 @@ package qemu
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/internal/service/vm"
 	t "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type VirtualMachineResourceModel struct {
@@ -21,7 +23,8 @@ type VirtualMachineResourceModel struct {
 	Agent             *VirtualMachineAgentOptions               `tfsdk:"agent"`
 	BIOS              types.String                              `tfsdk:"bios"`
 	CPU               VirtualMachineCpuOptions                  `tfsdk:"cpu"`
-	Disks             t.VirtualMachineDiskListValue             `tfsdk:"disks"`
+	Disks             t.VirtualMachineDiskSetValue              `tfsdk:"disks"`
+	ComputedDisks     t.VirtualMachineDiskSetValue              `tfsdk:"computed_disks"`
 	PCIDevices        []VirtualMachinePciDeviceOptions          `tfsdk:"pci_devices"`
 	NetworkInterfaces t.VirtualMachineNetworkInterfaceListValue `tfsdk:"network_interfaces"`
 	Memory            VirtualMachineMemoryOptions               `tfsdk:"memory"`
@@ -36,37 +39,65 @@ type VirtualMachineResourceModel struct {
 	Timeouts          *VirtualMachineTerraformTimeouts          `tfsdk:"timeouts"`
 }
 
-func VMToModel(ctx context.Context, vm *service.VirtualMachine) VirtualMachineResourceModel {
+func VMToModel(ctx context.Context, v *service.VirtualMachine, state *VirtualMachineResourceModel) VirtualMachineResourceModel {
+	definedDisksIface := []string{}
+	for _, disk := range state.Disks.Disks {
+		iface := fmt.Sprintf("%s%d", disk.InterfaceType.ValueString(), disk.Position.ValueInt64())
+		definedDisksIface = append(definedDisksIface, iface)
+
+	}
+	tflog.Debug(ctx, fmt.Sprintf("Defined disks %v", definedDisksIface))
+
+	generatedDisks := []vm.VirtualMachineDisk{}
+	definedDisks := []vm.VirtualMachineDisk{}
+	for _, disk := range v.Disks {
+		iface := fmt.Sprintf("%s%d", disk.InterfaceType, disk.Position)
+		tflog.Debug(ctx, fmt.Sprintf("On iface %v", iface))
+		if utils.ListContains(definedDisksIface, iface) {
+			tflog.Debug(ctx, fmt.Sprintf("iface %v is defined", iface))
+			definedDisks = append(definedDisks, disk)
+		} else {
+			tflog.Debug(ctx, fmt.Sprintf("iface %v is generated", iface))
+			generatedDisks = append(generatedDisks, disk)
+		}
+	}
+
 	m := VirtualMachineResourceModel{
-		ID:                types.Int64Value(int64(vm.VmId)),
-		Node:              types.StringValue(vm.Node),
-		Tags:              utils.UnpackListType(vm.Tags),
-		BIOS:              types.StringValue(string(vm.Bios)),
-		CPU:               VMCPUToModel(&vm.CPU),
-		Memory:            VMMemoryToModel(&vm.Memory),
-		Disks:             t.VirtualMachineDiskToListValue(ctx, vm.Disks),
-		NetworkInterfaces: t.VirtualMachineNetworkInterfaceToListValue(ctx, vm.NetworkInterfaces),
+		ID:                types.Int64Value(int64(v.VmId)),
+		Node:              types.StringValue(v.Node),
+		Tags:              utils.UnpackListType(v.Tags),
+		BIOS:              types.StringValue(string(v.Bios)),
+		CPU:               VMCPUToModel(&v.CPU),
+		Memory:            VMMemoryToModel(&v.Memory),
+		Disks:             t.VirtualMachineDiskToSetValue(ctx, definedDisks),
+		ComputedDisks:     t.VirtualMachineDiskToSetValue(ctx, generatedDisks),
+		NetworkInterfaces: t.VirtualMachineNetworkInterfaceToListValue(ctx, v.NetworkInterfaces),
+		StartOnNodeBoot:   types.BoolValue(v.StartOnBoot),
 	}
 
-	if vm.Name != nil {
-		m.Name = types.StringValue(*vm.Name)
+	if v.Description != nil {
+		m.Description = types.StringValue(*v.Description)
 	}
 
-	if vm.OsType != nil {
-		m.Type = types.StringValue(string(*vm.OsType))
+	if v.Name != nil {
+		m.Name = types.StringValue(*v.Name)
 	}
 
-	if vm.MachineType != nil {
-		m.MachineType = types.StringValue(string(*vm.MachineType))
+	if v.OsType != nil {
+		m.Type = types.StringValue(string(*v.OsType))
 	}
 
-	if vm.KeyboardLayout != nil {
-		kl := string(*vm.KeyboardLayout)
+	if v.MachineType != nil {
+		m.MachineType = types.StringValue(string(*v.MachineType))
+	}
+
+	if v.KeyboardLayout != nil {
+		kl := string(*v.KeyboardLayout)
 		m.KeyboardLayout = types.StringValue(kl)
 	}
 
-	if vm.Agent != nil {
-		a := VMAgentToModel(vm.Agent)
+	if v.Agent != nil {
+		a := VMAgentToModel(v.Agent)
 		m.Agent = &a
 	}
 

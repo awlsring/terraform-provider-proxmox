@@ -7,6 +7,7 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/internal/service/vm"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -45,11 +46,11 @@ func (c VirtualMachineNetworkInterfaceListType) ValueFromTerraform(ctx context.C
 	nics := []VirtualMachineNetworkInterfaceModel{}
 	for _, nic := range list.Elements() {
 		var v VirtualMachineNetworkInterfaceModel
-		t, err := nic.ToTerraformValue(ctx)
+		t := nic.(types.Object)
 		if err != nil {
 			return nil, fmt.Errorf("error converting disk to terraform value: %w", err)
 		}
-		t.As(&v)
+		t.As(ctx, &v, basetypes.ObjectAsOptions{})
 		nics = append(nics, v)
 	}
 
@@ -65,7 +66,7 @@ type VirtualMachineNetworkInterfaceListValue struct {
 }
 
 func VirtualMachineNetworkInterfaceListValueFrom(ctx context.Context, nics []VirtualMachineNetworkInterfaceModel) VirtualMachineNetworkInterfaceListValue {
-	l, diags := types.ListValueFrom(ctx, VirtualMachineDisk, nics)
+	l, diags := types.ListValueFrom(ctx, VirtualMachineNetworkInterface, nics)
 	if diags.HasError() {
 		tflog.Debug(ctx, fmt.Sprintf("diags: %v", diags))
 	}

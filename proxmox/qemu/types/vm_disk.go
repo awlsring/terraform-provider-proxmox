@@ -5,8 +5,10 @@ import (
 	"fmt"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service/vm"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -32,52 +34,55 @@ var VirtualMachineDisk = types.ObjectType{
 	},
 }
 
-func NewVirtualMachineDiskListType() VirtualMachineDiskListType {
-	return VirtualMachineDiskListType{
-		types.ListType{
+func NewVirtualMachineDiskSetType() VirtualMachineDiskSetType {
+	return VirtualMachineDiskSetType{
+		types.SetType{
 			ElemType: VirtualMachineDisk,
 		},
 	}
 }
 
-type VirtualMachineDiskListType struct {
-	types.ListType
+type VirtualMachineDiskSetType struct {
+	types.SetType
 }
 
-func (c VirtualMachineDiskListType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
-	val, err := c.ListType.ValueFromTerraform(ctx, in)
+func (c VirtualMachineDiskSetType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
+	val, err := c.SetType.ValueFromTerraform(ctx, in)
+	if err != nil {
+		return nil, err
+	}
 
-	list := val.(types.List)
+	set := val.(types.Set)
 
 	disks := []VirtualMachineDiskModel{}
-	for _, disk := range list.Elements() {
+	for _, disk := range set.Elements() {
 		var v VirtualMachineDiskModel
-		t, err := disk.ToTerraformValue(ctx)
+		t := disk.(types.Object)
 		if err != nil {
 			return nil, fmt.Errorf("error converting disk to terraform value: %w", err)
 		}
-		t.As(&v)
+		t.As(ctx, &v, basetypes.ObjectAsOptions{})
 		disks = append(disks, v)
 	}
 
-	return VirtualMachineDiskListValue{
-		val.(types.List),
+	return VirtualMachineDiskSetValue{
+		val.(types.Set),
 		disks,
 	}, err
 }
 
-type VirtualMachineDiskListValue struct {
-	types.List
+type VirtualMachineDiskSetValue struct {
+	types.Set
 	Disks []VirtualMachineDiskModel
 }
 
-func VirtualMachineDiskListValueFrom(ctx context.Context, disks []VirtualMachineDiskModel) VirtualMachineDiskListValue {
-	l, diags := types.ListValueFrom(ctx, VirtualMachineDisk, disks)
+func VirtualMachineDiskSetValueFrom(ctx context.Context, disks []VirtualMachineDiskModel) VirtualMachineDiskSetValue {
+	l, diags := types.SetValueFrom(ctx, VirtualMachineDisk, disks)
 	if diags.HasError() {
 		tflog.Debug(ctx, fmt.Sprintf("diags: %v", diags))
 	}
 
-	return VirtualMachineDiskListValue{
+	return VirtualMachineDiskSetValue{
 		l,
 		disks,
 	}
@@ -102,12 +107,13 @@ type VirtualMachineDiskSpeedLimitsModel struct {
 	WriteBurstable types.Int64 `tfsdk:"write_burstable"`
 }
 
-func VirtualMachineDiskToListValue(ctx context.Context, disks []vm.VirtualMachineDisk) VirtualMachineDiskListValue {
+func VirtualMachineDiskToSetValue(ctx context.Context, disks []vm.VirtualMachineDisk) VirtualMachineDiskSetValue {
 	models := []VirtualMachineDiskModel{}
 	for _, disk := range disks {
+		size := utils.BytesToGb(disk.Size)
 		m := VirtualMachineDiskModel{
 			Storage:       types.StringValue(disk.Storage),
-			Size:          types.Int64Value(int64(disk.Size)),
+			Size:          types.Int64Value(size),
 			UseIOThread:   types.BoolValue(disk.UseIOThreads),
 			InterfaceType: types.StringValue(string(disk.InterfaceType)),
 			SSDEmulation:  types.BoolValue(disk.SSDEmulation),
@@ -133,5 +139,5 @@ func VirtualMachineDiskToListValue(ctx context.Context, disks []vm.VirtualMachin
 		}
 		models = append(models, m)
 	}
-	return VirtualMachineDiskListValueFrom(ctx, models)
+	return VirtualMachineDiskSetValueFrom(ctx, models)
 }
