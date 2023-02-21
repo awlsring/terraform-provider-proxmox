@@ -164,7 +164,7 @@ func readDiskString(diskString string) (VirtualMachineDisk, error) {
 	return disk, nil
 }
 
-// func strToBytes(sizeStr string) int64 {
+// func StrToBytes(sizeStr string) int64 {
 // 	sizeStr = strings.ToUpper(sizeStr)
 // 	size, _ := strconv.ParseInt(sizeStr[:len(sizeStr)-1], 10, 64)
 // 	unit := sizeStr[len(sizeStr)-1]

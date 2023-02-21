@@ -18,3 +18,14 @@ func (c *Proxmox) GetVirtualMachineStatus(ctx context.Context, node string, vmid
 
 	return &r.Data, nil
 }
+
+func (c *Proxmox) StartVirtualMachine(ctx context.Context, node string, vmid int) error {
+	vmId := strconv.Itoa(vmid)
+	request := c.client.StartVirtualMachine(ctx, node, vmId)
+	_, h, err := c.client.StartVirtualMachineExecute(request)
+	if err != nil {
+		return errors.ApiError(h, err)
+	}
+
+	return nil
+}

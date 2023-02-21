@@ -12,6 +12,7 @@ type VirtualMachine struct {
 	VmId              int
 	Tags              []string
 	Name              *string
+	Description       *string
 	Agent             *vm.VirtualMachineAgent
 	Bios              proxmox.VirtualMachineBios
 	CPU               vm.VirtualMachineCpu
@@ -35,6 +36,7 @@ func (c *Proxmox) DescribeVirtualMachine(ctx context.Context, node string, vmid 
 	config := &VirtualMachine{
 		Node:           node,
 		VmId:           vmid,
+		Description:    configSummary.Description,
 		Agent:          vm.DetermineAgentConfig(configSummary.Agent),
 		Bios:           vm.DetermineBios(configSummary.Bios),
 		CPU:            vm.DetermineCPUConfiguration(*configSummary),

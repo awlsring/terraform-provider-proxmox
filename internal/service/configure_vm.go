@@ -15,10 +15,11 @@ type ConfigureVirtualMachineInput struct {
 	VmId              int
 	Name              *string
 	Tags              []string
+	Description       *string
 	Agent             *ConfigureVirtualMachineAgentOptions
 	Bios              *proxmox.VirtualMachineBios
 	CPU               *ConfigureVirtualMachineCpuOptions
-	Disk              []ConfigureVirtualMachineDiskOptions
+	Disks             []ConfigureVirtualMachineDiskOptions
 	PCIDevices        []ConfigureVirtualPciDeviceOptions
 	NetworkInterfaces []ConfigureVirtualMachineNetworkInterfaceOptions
 	Memory            *ConfigureVirtualMachineMemoryOptions
@@ -168,7 +169,7 @@ func FormDiskString(opts ConfigureVirtualMachineDiskOptions) *string {
 
 func FormNetworkInterfaceString(opts ConfigureVirtualMachineNetworkInterfaceOptions) *string {
 	firewallOn := "0"
-	isEnabled := "0"
+	isEnabled := "1"
 
 	nicStr := opts.Model + "=" + opts.MAC + ",bridge=" + opts.Bridge
 	if opts.VLAN != nil {
@@ -178,7 +179,7 @@ func FormNetworkInterfaceString(opts ConfigureVirtualMachineNetworkInterfaceOpti
 		firewallOn = "1"
 	}
 	if opts.Enabled {
-		isEnabled = "1"
+		isEnabled = "0"
 	}
 	nicStr = nicStr + ",firewall=" + firewallOn + ",link_down=" + isEnabled
 
@@ -201,13 +202,14 @@ func (c *Proxmox) ConfigureVirtualMachine(ctx context.Context, input *ConfigureV
 	vmId := strconv.Itoa(input.VmId)
 
 	content := proxmox.ApplyVirtualMachineConfigurationSyncRequestContent{
-		Bios:     input.Bios,
-		Name:     input.Name,
-		Ostype:   input.OsType,
-		Machine:  input.MachineType,
-		Args:     input.KVMArguments,
-		Keyboard: input.KeyboardLayout,
-		Tags:     SliceToStringCommaListPtr(input.Tags),
+		Bios:        input.Bios,
+		Name:        input.Name,
+		Description: input.Description,
+		Ostype:      input.OsType,
+		Machine:     input.MachineType,
+		Args:        input.KVMArguments,
+		Keyboard:    input.KeyboardLayout,
+		Tags:        SliceToStringCommaListPtr(input.Tags),
 	}
 	if input.Agent != nil {
 		content.Agent = FormAgentString(input.Agent.Enabled, input.Agent.FsTrim, input.Agent.Type)
@@ -237,8 +239,9 @@ func (c *Proxmox) ConfigureVirtualMachine(ctx context.Context, input *ConfigureV
 		content.Onboot = &onboot
 	}
 
-	for _, d := range input.Disk {
+	for _, d := range input.Disks {
 		config := FormDiskString(d)
+		fmt.Println("disk config: " + *config)
 		vm.AllocateDiskConfig(d.InterfaceType, d.Position, config, &content)
 	}
 
@@ -247,7 +250,11 @@ func (c *Proxmox) ConfigureVirtualMachine(ctx context.Context, input *ConfigureV
 	}
 
 	for _, n := range input.NetworkInterfaces {
+		if n.MAC == "" {
+			n.MAC = vm.GenerateMAC()
+		}
 		config := FormNetworkInterfaceString(n)
+		fmt.Println("network config: " + *config)
 		vm.AllocateNetworkInterfaceConfig(n.Position, config, &content)
 	}
 
