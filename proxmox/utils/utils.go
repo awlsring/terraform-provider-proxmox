@@ -126,3 +126,11 @@ func LoadPlanAndState(ctx context.Context, req resource.UpdateRequest, resp *res
 	}
 	return plan, state, nil
 }
+
+func BytesToGb(b int64) int64 {
+	return b / 1024 / 1024 / 1024
+}
+
+func BytesToMb(b int64) int64 {
+	return b / 1024 / 1024
+}
