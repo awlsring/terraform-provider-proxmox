@@ -32,7 +32,7 @@ func (m boolDefaultModifier) PlanModifyBool(ctx context.Context, req planmodifie
 		return
 	}
 
-	resp.PlanValue = types.BoolValue(true)
+	resp.PlanValue = types.BoolValue(m.Default)
 }
 
 type boolDefaultModifier struct {
