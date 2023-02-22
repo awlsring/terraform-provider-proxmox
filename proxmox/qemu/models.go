@@ -25,7 +25,8 @@ type VirtualMachineResourceModel struct {
 	CPU                       VirtualMachineCpuOptions                 `tfsdk:"cpu"`
 	Disks                     t.VirtualMachineDiskSetValue             `tfsdk:"disks"`
 	ComputedDisks             t.VirtualMachineDiskSetValue             `tfsdk:"computed_disks"`
-	PCIDevices                []VirtualMachinePciDeviceOptions         `tfsdk:"pci_devices"`
+	PCIDevices                t.VirtualMachinePCIDeviceSetValue        `tfsdk:"pci_devices"`
+	ComputedPCIDevices        t.VirtualMachinePCIDeviceSetValue        `tfsdk:"computed_pci_devices"`
 	NetworkInterfaces         t.VirtualMachineNetworkInterfaceSetValue `tfsdk:"network_interfaces"`
 	ComputedNetworkInterfaces t.VirtualMachineNetworkInterfaceSetValue `tfsdk:"computed_network_interfaces"`
 	Memory                    VirtualMachineMemoryOptions              `tfsdk:"memory"`
@@ -41,8 +42,9 @@ type VirtualMachineResourceModel struct {
 }
 
 func VMToModel(ctx context.Context, v *service.VirtualMachine, state *VirtualMachineResourceModel) VirtualMachineResourceModel {
-	comptuedDisks, definedDisks := sortComputedAndDefinedDisks(ctx, v.Disks)
-	comptuedNics, definedNics := sortComputedAndDefinedNics(ctx, v.NetworkInterfaces)
+	definedDisks, computedDisks := sortComputedAndDefinedDisks(ctx, v.Disks, &state.Disks)
+	definedNics, computedNics := sortComputedAndDefinedNics(ctx, v.NetworkInterfaces, &state.NetworkInterfaces)
+	definedPCI, computedPCI := sortComputedAndDefinedPCIDevices(ctx, v.PCIDevices, &state.PCIDevices)
 
 	m := VirtualMachineResourceModel{
 		ID:                        types.Int64Value(int64(v.VmId)),
@@ -52,9 +54,11 @@ func VMToModel(ctx context.Context, v *service.VirtualMachine, state *VirtualMac
 		CPU:                       VMCPUToModel(&v.CPU),
 		Memory:                    VMMemoryToModel(&v.Memory),
 		Disks:                     t.VirtualMachineDiskToSetValue(ctx, definedDisks),
-		ComputedDisks:             t.VirtualMachineDiskToSetValue(ctx, comptuedDisks),
+		ComputedDisks:             t.VirtualMachineDiskToSetValue(ctx, computedDisks),
 		NetworkInterfaces:         t.VirtualMachineNetworkInterfaceToSetValue(ctx, definedNics),
-		ComputedNetworkInterfaces: t.VirtualMachineNetworkInterfaceToSetValue(ctx, comptuedNics),
+		ComputedNetworkInterfaces: t.VirtualMachineNetworkInterfaceToSetValue(ctx, computedNics),
+		PCIDevices:                t.VirtualMachinePCIDeviceToSetValue(ctx, definedPCI),
+		ComputedPCIDevices:        t.VirtualMachinePCIDeviceToSetValue(ctx, computedPCI),
 		StartOnNodeBoot:           types.BoolValue(v.StartOnBoot),
 	}
 
@@ -87,12 +91,11 @@ func VMToModel(ctx context.Context, v *service.VirtualMachine, state *VirtualMac
 	return m
 }
 
-func sortComputedAndDefinedDisks(ctx context.Context, disks []vm.VirtualMachineDisk) ([]vm.VirtualMachineDisk, []vm.VirtualMachineDisk) {
+func sortComputedAndDefinedDisks(ctx context.Context, disks []vm.VirtualMachineDisk, state *t.VirtualMachineDiskSetValue) ([]vm.VirtualMachineDisk, []vm.VirtualMachineDisk) {
 	definedDisksIface := []string{}
-	for _, disk := range disks {
-		iface := fmt.Sprintf("%s%d", disk.InterfaceType, disk.Position)
+	for _, disk := range state.Disks {
+		iface := fmt.Sprintf("%s%d", disk.InterfaceType.ValueString(), disk.Position.ValueInt64())
 		definedDisksIface = append(definedDisksIface, iface)
-
 	}
 	tflog.Debug(ctx, fmt.Sprintf("Defined disks %v", definedDisksIface))
 
@@ -109,13 +112,14 @@ func sortComputedAndDefinedDisks(ctx context.Context, disks []vm.VirtualMachineD
 			generatedDisks = append(generatedDisks, disk)
 		}
 	}
+
 	return definedDisks, generatedDisks
 }
 
-func sortComputedAndDefinedNics(ctx context.Context, nics []vm.VirtualMachineNetworkInterface) ([]vm.VirtualMachineNetworkInterface, []vm.VirtualMachineNetworkInterface) {
+func sortComputedAndDefinedNics(ctx context.Context, nics []vm.VirtualMachineNetworkInterface, state *t.VirtualMachineNetworkInterfaceSetValue) ([]vm.VirtualMachineNetworkInterface, []vm.VirtualMachineNetworkInterface) {
 	definedNicsIface := []string{}
-	for _, nic := range nics {
-		iface := fmt.Sprintf("%s%d", nic.Model, nic.Position)
+	for _, nic := range state.Nics {
+		iface := fmt.Sprintf("%s%d", nic.Model.ValueString(), nic.Position.ValueInt64())
 		definedNicsIface = append(definedNicsIface, iface)
 
 	}
@@ -134,7 +138,30 @@ func sortComputedAndDefinedNics(ctx context.Context, nics []vm.VirtualMachineNet
 			generatedNics = append(generatedNics, nic)
 		}
 	}
+
 	return definedNics, generatedNics
+}
+
+func sortComputedAndDefinedPCIDevices(ctx context.Context, devices []vm.VirtualMachinePCIDevice, state *t.VirtualMachinePCIDeviceSetValue) ([]vm.VirtualMachinePCIDevice, []vm.VirtualMachinePCIDevice) {
+	definedDevicesIface := []string{}
+	for _, device := range state.PCIDevices {
+		iface := fmt.Sprintf("%s-%s", device.Name.ValueString(), device.ID.ValueString())
+		definedDevicesIface = append(definedDevicesIface, iface)
+	}
+	tflog.Debug(ctx, fmt.Sprintf("Defined pci devices %v", definedDevicesIface))
+
+	generatedDevices := []vm.VirtualMachinePCIDevice{}
+	definedDevices := []vm.VirtualMachinePCIDevice{}
+	for _, device := range devices {
+		iface := fmt.Sprintf("%s-%s", device.Name, device.ID)
+		if utils.ListContains(definedDevicesIface, iface) {
+			definedDevices = append(definedDevices, device)
+		} else {
+			generatedDevices = append(generatedDevices, device)
+		}
+	}
+
+	return definedDevices, generatedDevices
 }
 
 type VirtualMachineCloneOptions struct {

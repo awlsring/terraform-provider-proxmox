@@ -71,6 +71,10 @@ func VirtualMachineNetworkInterfaceSetValueFrom(ctx context.Context, nics []Virt
 		tflog.Debug(ctx, fmt.Sprintf("diags: %v", diags))
 	}
 
+	if len(nics) == 0 {
+		l = types.SetNull(VirtualMachineNetworkInterface)
+	}
+
 	return VirtualMachineNetworkInterfaceSetValue{
 		l,
 		nics,

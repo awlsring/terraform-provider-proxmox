@@ -18,6 +18,7 @@ type VirtualMachine struct {
 	CPU               vm.VirtualMachineCpu
 	Disks             []vm.VirtualMachineDisk
 	NetworkInterfaces []vm.VirtualMachineNetworkInterface
+	PCIDevices        []vm.VirtualMachinePCIDevice
 	Memory            vm.VirtualMachineMemory
 	CloudInit         *vm.VirtualMachineCloudInit
 	OsType            *proxmox.VirtualMachineOperatingSystem

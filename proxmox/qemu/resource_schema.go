@@ -306,33 +306,17 @@ var ResourceSchema = schema.Schema{
 			CustomType:   t.NewVirtualMachineDiskSetType(),
 			NestedObject: DiskObjectSchema,
 		},
-		"pci_devices": schema.ListNestedAttribute{
-			Optional:    true,
-			Description: "PCI devices passed through to the VM.",
-			NestedObject: schema.NestedAttributeObject{
-				Attributes: map[string]schema.Attribute{
-					"device_name": schema.StringAttribute{
-						Required:    true,
-						Description: "The device name of the PCI device.",
-					},
-					"device_id": schema.StringAttribute{
-						Required:    true,
-						Description: "The device ID of the PCI device.",
-					},
-					"pcie": schema.BoolAttribute{
-						Optional:    true,
-						Computed:    true,
-						Description: "Whether the PCI device is PCIe.",
-						PlanModifiers: []planmodifier.Bool{
-							defaults.DefaultBool(false),
-						},
-					},
-					"mdev": schema.StringAttribute{
-						Optional:    true,
-						Description: "The mediated device name.",
-					},
-				},
-			},
+		"pci_devices": schema.SetNestedAttribute{
+			Optional:     true,
+			Description:  "PCI devices passed through to the VM.",
+			CustomType:   t.NewVirtualMachinePCIDeviceSetType(),
+			NestedObject: PCIDeviceObjectSchema,
+		},
+		"computed_pci_devices": schema.SetNestedAttribute{
+			Computed:     true,
+			Description:  "The non terraform generated PCI devices passed through to the VM.",
+			CustomType:   t.NewVirtualMachinePCIDeviceSetType(),
+			NestedObject: PCIDeviceObjectSchema,
 		},
 		"network_interfaces": schema.SetNestedAttribute{
 			Optional:     true,

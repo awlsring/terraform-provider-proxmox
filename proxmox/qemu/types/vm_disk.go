@@ -82,6 +82,10 @@ func VirtualMachineDiskSetValueFrom(ctx context.Context, disks []VirtualMachineD
 		tflog.Debug(ctx, fmt.Sprintf("diags: %v", diags))
 	}
 
+	if len(disks) == 0 {
+		l = types.SetNull(VirtualMachineDisk)
+	}
+
 	return VirtualMachineDiskSetValue{
 		l,
 		disks,
