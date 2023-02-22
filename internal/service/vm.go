@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/awlsring/proxmox-go/proxmox"
+	"github.com/awlsring/terraform-provider-proxmox/internal/service/errors"
 	"github.com/awlsring/terraform-provider-proxmox/internal/service/vm"
 )
 
@@ -58,6 +59,16 @@ func (c *Proxmox) DescribeTemplates(ctx context.Context, node string) ([]vm.Virt
 	return virtualMachineTemplates, nil
 }
 
+func (c *Proxmox) DeleteVirtualMachine(ctx context.Context, node string, vmid int) error {
+	vmId := strconv.Itoa(vmid)
+	request := c.client.DeleteVirtualMachine(ctx, node, vmId)
+	_, h, err := c.client.DeleteVirtualMachineExecute(request)
+	if err != nil {
+		return errors.ApiError(h, err)
+	}
+	return nil
+}
+
 func (c *Proxmox) DescribeVirtualMachines(ctx context.Context, node string) ([]vm.VirtualMachine, error) {
 	vms, err := c.ListVirtualMachines(ctx, node)
 	if err != nil {
@@ -95,9 +106,9 @@ func (c *Proxmox) vmFromSummary(ctx context.Context, node string, summary proxmo
 	}
 
 	virtualMachine := vm.VirtualMachine{
-		Id: vmId,
-		Node: node,
-		VirtualDisks: virtualDisks,
+		Id:                    vmId,
+		Node:                  node,
+		VirtualDisks:          virtualDisks,
 		VirtualNetworkDevices: virtualNics,
 	}
 

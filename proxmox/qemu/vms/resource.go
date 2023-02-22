@@ -7,7 +7,6 @@ import (
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -15,7 +14,6 @@ import (
 var (
 	_ resource.Resource                   = &virtualMachineResource{}
 	_ resource.ResourceWithConfigure      = &virtualMachineResource{}
-	_ resource.ResourceWithImportState    = &virtualMachineResource{}
 	_ resource.ResourceWithValidateConfig = &virtualMachineResource{}
 )
 
@@ -189,8 +187,14 @@ func (r *virtualMachineResource) Delete(ctx context.Context, req resource.Delete
 	if resp.Diagnostics.HasError() {
 		return
 	}
-}
 
-func (r *virtualMachineResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	tflog.Debug(ctx, fmt.Sprintf("Deleting vm: '%s' '%v'", state.Node.ValueString(), state.ID.ValueInt64()))
+	err := r.client.DeleteVirtualMachine(ctx, state.Node.ValueString(), int(state.ID.ValueInt64()))
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error deleting vm",
+			"Could not delete vm, unexpected error: "+err.Error(),
+		)
+		return
+	}
 }
