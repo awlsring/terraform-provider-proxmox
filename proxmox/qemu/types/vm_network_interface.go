@@ -26,25 +26,25 @@ var VirtualMachineNetworkInterface = types.ObjectType{
 	},
 }
 
-func NewVirtualMachineNetworkInterfaceListType() VirtualMachineNetworkInterfaceListType {
-	return VirtualMachineNetworkInterfaceListType{
-		types.ListType{
+func NewVirtualMachineNetworkInterfaceSetType() VirtualMachineNetworkInterfaceSetType {
+	return VirtualMachineNetworkInterfaceSetType{
+		types.SetType{
 			ElemType: VirtualMachineNetworkInterface,
 		},
 	}
 }
 
-type VirtualMachineNetworkInterfaceListType struct {
-	types.ListType
+type VirtualMachineNetworkInterfaceSetType struct {
+	types.SetType
 }
 
-func (c VirtualMachineNetworkInterfaceListType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
-	val, err := c.ListType.ValueFromTerraform(ctx, in)
+func (c VirtualMachineNetworkInterfaceSetType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
+	val, err := c.SetType.ValueFromTerraform(ctx, in)
 
-	list := val.(types.List)
+	set := val.(types.Set)
 
 	nics := []VirtualMachineNetworkInterfaceModel{}
-	for _, nic := range list.Elements() {
+	for _, nic := range set.Elements() {
 		var v VirtualMachineNetworkInterfaceModel
 		t := nic.(types.Object)
 		if err != nil {
@@ -54,24 +54,24 @@ func (c VirtualMachineNetworkInterfaceListType) ValueFromTerraform(ctx context.C
 		nics = append(nics, v)
 	}
 
-	return VirtualMachineNetworkInterfaceListValue{
-		val.(types.List),
+	return VirtualMachineNetworkInterfaceSetValue{
+		val.(types.Set),
 		nics,
 	}, err
 }
 
-type VirtualMachineNetworkInterfaceListValue struct {
-	types.List
+type VirtualMachineNetworkInterfaceSetValue struct {
+	types.Set
 	Nics []VirtualMachineNetworkInterfaceModel
 }
 
-func VirtualMachineNetworkInterfaceListValueFrom(ctx context.Context, nics []VirtualMachineNetworkInterfaceModel) VirtualMachineNetworkInterfaceListValue {
-	l, diags := types.ListValueFrom(ctx, VirtualMachineNetworkInterface, nics)
+func VirtualMachineNetworkInterfaceSetValueFrom(ctx context.Context, nics []VirtualMachineNetworkInterfaceModel) VirtualMachineNetworkInterfaceSetValue {
+	l, diags := types.SetValueFrom(ctx, VirtualMachineNetworkInterface, nics)
 	if diags.HasError() {
 		tflog.Debug(ctx, fmt.Sprintf("diags: %v", diags))
 	}
 
-	return VirtualMachineNetworkInterfaceListValue{
+	return VirtualMachineNetworkInterfaceSetValue{
 		l,
 		nics,
 	}
@@ -89,7 +89,7 @@ type VirtualMachineNetworkInterfaceModel struct {
 	MTU         types.Int64  `tfsdk:"mtu"`
 }
 
-func VirtualMachineNetworkInterfaceToListValue(ctx context.Context, nics []vm.VirtualMachineNetworkInterface) VirtualMachineNetworkInterfaceListValue {
+func VirtualMachineNetworkInterfaceToSetValue(ctx context.Context, nics []vm.VirtualMachineNetworkInterface) VirtualMachineNetworkInterfaceSetValue {
 	models := []VirtualMachineNetworkInterfaceModel{}
 	for _, nic := range nics {
 		m := VirtualMachineNetworkInterfaceModel{
@@ -111,5 +111,5 @@ func VirtualMachineNetworkInterfaceToListValue(ctx context.Context, nics []vm.Vi
 		}
 		models = append(models, m)
 	}
-	return VirtualMachineNetworkInterfaceListValueFrom(ctx, models)
+	return VirtualMachineNetworkInterfaceSetValueFrom(ctx, models)
 }

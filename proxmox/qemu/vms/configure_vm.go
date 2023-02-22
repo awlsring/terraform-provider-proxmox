@@ -56,7 +56,7 @@ func (r *virtualMachineResource) configureVm(ctx context.Context, plan *qemu.Vir
 	return nil
 }
 
-func FormNetworkInterfaceConfig(nic t.VirtualMachineNetworkInterfaceListValue) []service.ConfigureVirtualMachineNetworkInterfaceOptions {
+func FormNetworkInterfaceConfig(nic t.VirtualMachineNetworkInterfaceSetValue) []service.ConfigureVirtualMachineNetworkInterfaceOptions {
 	n := make([]service.ConfigureVirtualMachineNetworkInterfaceOptions, len(nic.Nics))
 	for i, v := range nic.Nics {
 		nconfig := service.ConfigureVirtualMachineNetworkInterfaceOptions{

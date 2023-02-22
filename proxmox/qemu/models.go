@@ -13,66 +13,49 @@ import (
 )
 
 type VirtualMachineResourceModel struct {
-	ID                types.Int64                               `tfsdk:"id"`
-	Node              types.String                              `tfsdk:"node"`
-	Name              types.String                              `tfsdk:"name"`
-	Description       types.String                              `tfsdk:"description"`
-	Tags              types.List                                `tfsdk:"tags"`
-	Clone             *VirtualMachineCloneOptions               `tfsdk:"clone"`
-	ISO               *VirtualMachineIsoOptions                 `tfsdk:"iso"`
-	Agent             *VirtualMachineAgentOptions               `tfsdk:"agent"`
-	BIOS              types.String                              `tfsdk:"bios"`
-	CPU               VirtualMachineCpuOptions                  `tfsdk:"cpu"`
-	Disks             t.VirtualMachineDiskSetValue              `tfsdk:"disks"`
-	ComputedDisks     t.VirtualMachineDiskSetValue              `tfsdk:"computed_disks"`
-	PCIDevices        []VirtualMachinePciDeviceOptions          `tfsdk:"pci_devices"`
-	NetworkInterfaces t.VirtualMachineNetworkInterfaceListValue `tfsdk:"network_interfaces"`
-	Memory            VirtualMachineMemoryOptions               `tfsdk:"memory"`
-	MachineType       types.String                              `tfsdk:"machine_type"`
-	KVMArguments      types.String                              `tfsdk:"kvm_arguments"`
-	KeyboardLayout    types.String                              `tfsdk:"keyboard_layout"`
-	CloudInit         *VirtualMachineCloudInitOptions           `tfsdk:"cloud_init"`
-	Type              types.String                              `tfsdk:"type"`
-	ResourcePool      types.String                              `tfsdk:"resource_pool"`
-	StartOnCreate     types.Bool                                `tfsdk:"start_on_create"`
-	StartOnNodeBoot   types.Bool                                `tfsdk:"start_on_node_boot"`
-	Timeouts          *VirtualMachineTerraformTimeouts          `tfsdk:"timeouts"`
+	ID                        types.Int64                              `tfsdk:"id"`
+	Node                      types.String                             `tfsdk:"node"`
+	Name                      types.String                             `tfsdk:"name"`
+	Description               types.String                             `tfsdk:"description"`
+	Tags                      types.List                               `tfsdk:"tags"`
+	Clone                     *VirtualMachineCloneOptions              `tfsdk:"clone"`
+	ISO                       *VirtualMachineIsoOptions                `tfsdk:"iso"`
+	Agent                     *VirtualMachineAgentOptions              `tfsdk:"agent"`
+	BIOS                      types.String                             `tfsdk:"bios"`
+	CPU                       VirtualMachineCpuOptions                 `tfsdk:"cpu"`
+	Disks                     t.VirtualMachineDiskSetValue             `tfsdk:"disks"`
+	ComputedDisks             t.VirtualMachineDiskSetValue             `tfsdk:"computed_disks"`
+	PCIDevices                []VirtualMachinePciDeviceOptions         `tfsdk:"pci_devices"`
+	NetworkInterfaces         t.VirtualMachineNetworkInterfaceSetValue `tfsdk:"network_interfaces"`
+	ComputedNetworkInterfaces t.VirtualMachineNetworkInterfaceSetValue `tfsdk:"computed_network_interfaces"`
+	Memory                    VirtualMachineMemoryOptions              `tfsdk:"memory"`
+	MachineType               types.String                             `tfsdk:"machine_type"`
+	KVMArguments              types.String                             `tfsdk:"kvm_arguments"`
+	KeyboardLayout            types.String                             `tfsdk:"keyboard_layout"`
+	CloudInit                 *VirtualMachineCloudInitOptions          `tfsdk:"cloud_init"`
+	Type                      types.String                             `tfsdk:"type"`
+	ResourcePool              types.String                             `tfsdk:"resource_pool"`
+	StartOnCreate             types.Bool                               `tfsdk:"start_on_create"`
+	StartOnNodeBoot           types.Bool                               `tfsdk:"start_on_node_boot"`
+	Timeouts                  *VirtualMachineTerraformTimeouts         `tfsdk:"timeouts"`
 }
 
 func VMToModel(ctx context.Context, v *service.VirtualMachine, state *VirtualMachineResourceModel) VirtualMachineResourceModel {
-	definedDisksIface := []string{}
-	for _, disk := range state.Disks.Disks {
-		iface := fmt.Sprintf("%s%d", disk.InterfaceType.ValueString(), disk.Position.ValueInt64())
-		definedDisksIface = append(definedDisksIface, iface)
-
-	}
-	tflog.Debug(ctx, fmt.Sprintf("Defined disks %v", definedDisksIface))
-
-	generatedDisks := []vm.VirtualMachineDisk{}
-	definedDisks := []vm.VirtualMachineDisk{}
-	for _, disk := range v.Disks {
-		iface := fmt.Sprintf("%s%d", disk.InterfaceType, disk.Position)
-		tflog.Debug(ctx, fmt.Sprintf("On iface %v", iface))
-		if utils.ListContains(definedDisksIface, iface) {
-			tflog.Debug(ctx, fmt.Sprintf("iface %v is defined", iface))
-			definedDisks = append(definedDisks, disk)
-		} else {
-			tflog.Debug(ctx, fmt.Sprintf("iface %v is generated", iface))
-			generatedDisks = append(generatedDisks, disk)
-		}
-	}
+	comptuedDisks, definedDisks := sortComputedAndDefinedDisks(ctx, v.Disks)
+	comptuedNics, definedNics := sortComputedAndDefinedNics(ctx, v.NetworkInterfaces)
 
 	m := VirtualMachineResourceModel{
-		ID:                types.Int64Value(int64(v.VmId)),
-		Node:              types.StringValue(v.Node),
-		Tags:              utils.UnpackListType(v.Tags),
-		BIOS:              types.StringValue(string(v.Bios)),
-		CPU:               VMCPUToModel(&v.CPU),
-		Memory:            VMMemoryToModel(&v.Memory),
-		Disks:             t.VirtualMachineDiskToSetValue(ctx, definedDisks),
-		ComputedDisks:     t.VirtualMachineDiskToSetValue(ctx, generatedDisks),
-		NetworkInterfaces: t.VirtualMachineNetworkInterfaceToListValue(ctx, v.NetworkInterfaces),
-		StartOnNodeBoot:   types.BoolValue(v.StartOnBoot),
+		ID:                        types.Int64Value(int64(v.VmId)),
+		Node:                      types.StringValue(v.Node),
+		Tags:                      utils.UnpackListType(v.Tags),
+		BIOS:                      types.StringValue(string(v.Bios)),
+		CPU:                       VMCPUToModel(&v.CPU),
+		Memory:                    VMMemoryToModel(&v.Memory),
+		Disks:                     t.VirtualMachineDiskToSetValue(ctx, definedDisks),
+		ComputedDisks:             t.VirtualMachineDiskToSetValue(ctx, comptuedDisks),
+		NetworkInterfaces:         t.VirtualMachineNetworkInterfaceToSetValue(ctx, definedNics),
+		ComputedNetworkInterfaces: t.VirtualMachineNetworkInterfaceToSetValue(ctx, comptuedNics),
+		StartOnNodeBoot:           types.BoolValue(v.StartOnBoot),
 	}
 
 	if v.Description != nil {
@@ -102,6 +85,56 @@ func VMToModel(ctx context.Context, v *service.VirtualMachine, state *VirtualMac
 	}
 
 	return m
+}
+
+func sortComputedAndDefinedDisks(ctx context.Context, disks []vm.VirtualMachineDisk) ([]vm.VirtualMachineDisk, []vm.VirtualMachineDisk) {
+	definedDisksIface := []string{}
+	for _, disk := range disks {
+		iface := fmt.Sprintf("%s%d", disk.InterfaceType, disk.Position)
+		definedDisksIface = append(definedDisksIface, iface)
+
+	}
+	tflog.Debug(ctx, fmt.Sprintf("Defined disks %v", definedDisksIface))
+
+	generatedDisks := []vm.VirtualMachineDisk{}
+	definedDisks := []vm.VirtualMachineDisk{}
+	for _, disk := range disks {
+		iface := fmt.Sprintf("%s%d", disk.InterfaceType, disk.Position)
+		tflog.Debug(ctx, fmt.Sprintf("On iface %v", iface))
+		if utils.ListContains(definedDisksIface, iface) {
+			tflog.Debug(ctx, fmt.Sprintf("iface %v is defined", iface))
+			definedDisks = append(definedDisks, disk)
+		} else {
+			tflog.Debug(ctx, fmt.Sprintf("iface %v is generated", iface))
+			generatedDisks = append(generatedDisks, disk)
+		}
+	}
+	return definedDisks, generatedDisks
+}
+
+func sortComputedAndDefinedNics(ctx context.Context, nics []vm.VirtualMachineNetworkInterface) ([]vm.VirtualMachineNetworkInterface, []vm.VirtualMachineNetworkInterface) {
+	definedNicsIface := []string{}
+	for _, nic := range nics {
+		iface := fmt.Sprintf("%s%d", nic.Model, nic.Position)
+		definedNicsIface = append(definedNicsIface, iface)
+
+	}
+	tflog.Debug(ctx, fmt.Sprintf("Defined nics %v", definedNicsIface))
+
+	generatedNics := []vm.VirtualMachineNetworkInterface{}
+	definedNics := []vm.VirtualMachineNetworkInterface{}
+	for _, nic := range nics {
+		iface := fmt.Sprintf("%s%d", nic.Model, nic.Position)
+		tflog.Debug(ctx, fmt.Sprintf("On iface %v", iface))
+		if utils.ListContains(definedNicsIface, iface) {
+			tflog.Debug(ctx, fmt.Sprintf("iface %v is defined", iface))
+			definedNics = append(definedNics, nic)
+		} else {
+			tflog.Debug(ctx, fmt.Sprintf("iface %v is generated", iface))
+			generatedNics = append(generatedNics, nic)
+		}
+	}
+	return definedNics, generatedNics
 }
 
 type VirtualMachineCloneOptions struct {
