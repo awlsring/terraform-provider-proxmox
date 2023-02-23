@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/awlsring/proxmox-go/proxmox"
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
@@ -68,6 +69,28 @@ func (r *virtualMachineResource) iso(ctx context.Context, plan *qemu.VirtualMach
 		return nil
 	}
 
+	return nil
+}
+
+func (r *virtualMachineResource) waitForStateChange(ctx context.Context, node string, vmId int, endState proxmox.VirtualMachineStatus) error {
+	tflog.Debug(ctx, "waiting for state change...")
+	retries := 0
+	limit := 10
+	for {
+		status, err := r.client.GetVirtualMachineStatus(ctx, node, vmId)
+		if err != nil {
+			return err
+		}
+		if status.Status == endState {
+			break
+		}
+		if retries <= limit {
+			retries++
+		}
+		tflog.Debug(ctx, "state is still "+string(status.Status)+", waiting 5 seconds...")
+		time.Sleep(5 * time.Second)
+	}
+	tflog.Debug(ctx, "state changed to "+string(endState))
 	return nil
 }
 

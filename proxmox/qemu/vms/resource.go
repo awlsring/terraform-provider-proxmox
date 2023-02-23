@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/awlsring/proxmox-go/proxmox"
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -83,7 +84,7 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 
 	// read
 	tflog.Debug(ctx, "Reading virtual machine")
-	m, err := r.readModelWithStateContext(ctx, plan.Node.ValueString(), int(plan.ID.ValueInt64()), &plan)
+	m, err := r.readModelWithContext(ctx, plan.Node.ValueString(), int(plan.ID.ValueInt64()), &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading virtual machine",
@@ -112,7 +113,7 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 	}
 }
 
-func (r *virtualMachineResource) readModelWithStateContext(ctx context.Context, node string, id int, state *qemu.VirtualMachineResourceModel) (*qemu.VirtualMachineResourceModel, error) {
+func (r *virtualMachineResource) readModelWithContext(ctx context.Context, node string, id int, state *qemu.VirtualMachineResourceModel) (*qemu.VirtualMachineResourceModel, error) {
 	vm, err := r.client.DescribeVirtualMachine(ctx, node, id)
 	if err != nil {
 		return nil, err
@@ -127,7 +128,9 @@ func (r *virtualMachineResource) readModelWithStateContext(ctx context.Context, 
 	model.Timeouts = state.Timeouts
 	model.StartOnCreate = state.StartOnCreate
 
-	return &model, nil
+	tflog.Debug(ctx, fmt.Sprintf("model '%v'", model.ComputedDisks))
+
+	return model, nil
 }
 
 func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -139,7 +142,9 @@ func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
-	vm, err := r.client.DescribeVirtualMachine(ctx, state.Node.ValueString(), int(state.ID.ValueInt64()))
+	// read
+	tflog.Debug(ctx, "Reading virtual machine")
+	m, err := r.readModelWithContext(ctx, state.Node.ValueString(), int(state.ID.ValueInt64()), &state)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading virtual machine",
@@ -148,18 +153,53 @@ func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
-	model := qemu.VMToModel(ctx, vm, &state)
-
-	if state.Clone != nil {
-		model.Clone = state.Clone
-	}
-	if state.ISO != nil {
-		model.ISO = state.ISO
-	}
-
-	diags = resp.State.Set(ctx, &model)
+	diags = resp.State.Set(ctx, &m)
 	resp.Diagnostics.Append(diags...)
+}
 
+func (r *virtualMachineResource) postConfigureVmState(ctx context.Context, node string, id int) error {
+	status, err := r.client.GetVirtualMachineStatus(ctx, node, id)
+	if err != nil {
+		return err
+	}
+	tflog.Debug(ctx, "Virtual machine status: "+string(status.Status))
+
+	if status.Status == proxmox.VIRTUALMACHINESTATUS_STOPPED {
+		tflog.Debug(ctx, "Starting virtual machine")
+		err = r.client.StartVirtualMachine(ctx, node, id)
+		if err != nil {
+			return err
+		}
+
+		err := r.waitForStateChange(ctx, node, id, proxmox.VIRTUALMACHINESTATUS_RUNNING)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *virtualMachineResource) preConfigureVmState(ctx context.Context, node string, id int) error {
+	status, err := r.client.GetVirtualMachineStatus(ctx, node, id)
+	if err != nil {
+		return err
+	}
+
+	if status.Status == "running" {
+		tflog.Debug(ctx, "Stopping virtual machine")
+		err = r.client.StopVirtualMachine(ctx, node, id)
+		if err != nil {
+			return err
+		}
+
+		err := r.waitForStateChange(ctx, node, id, proxmox.VIRTUALMACHINESTATUS_STOPPED)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *virtualMachineResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -177,7 +217,88 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	node := plan.Node.ValueString()
+	vmId := int(state.ID.ValueInt64())
+
+	err := r.preConfigureVmState(ctx, node, vmId)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error configuring virtual machine",
+			"Could not configure virtual machine, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	tflog.Debug(ctx, fmt.Sprintf("vm state '%v'", state))
+	tflog.Debug(ctx, fmt.Sprintf("vm plan '%v'", plan))
+
+	tflog.Debug(ctx, "Configuring virtual machine")
+	err = r.configureVm(ctx, &plan)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error configuring virtual machine",
+			"Could not configure virtual machine, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	tflog.Debug(ctx, "Reading virtual machine")
+	m, err := r.readModelWithContext(ctx, node, vmId, &plan)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading virtual machine",
+			"Could not read virtual machine, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	err = r.postConfigureVmState(ctx, node, vmId)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error configuring virtual machine",
+			"Could not configure virtual machine, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	diags = resp.State.Set(ctx, &m)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
+
+// func CompareState(state *qemu.VirtualMachineResourceModel, plan qemu.VirtualMachineResourceModel) *qemu.VirtualMachineResourceModel {
+// 	opts := cmp.Options{
+// 		cmp.Transformer("ZeroIfDifferent", func(x int) int {
+// 			return 0 // Return 0 if the two int values are different
+// 		}),
+// 	}
+
+// 	// Use cmp.Diff with the options to compare the two structs
+// 	diff := cmp.Diff(state, plan, opts...)
+
+// 	// Create a new struct with the differing fields updated
+// 	var result *qemu.VirtualMachineResourceModel
+// 	if diff == "" {
+// 		result = state // If the structs are the same, return the original struct
+// 	} else {
+// 		// Use reflect to update the fields in the new struct
+// 		result = state
+// 		diffList := cmp.
+// 		for _, d := range diffList {
+// 			if d[0] == '+' {
+// 				fieldName := d[2:strings.Index(d, ":")]
+// 				fieldValue := d[strings.Index(d, ":")+1:]
+// 				field := reflect.ValueOf(&result).Elem().FieldByName(fieldName)
+// 				if field.IsValid() {
+// 					field.SetString(fieldValue)
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
 func (r *virtualMachineResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	tflog.Debug(ctx, "Delete virtual machine method")

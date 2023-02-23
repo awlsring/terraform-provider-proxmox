@@ -41,7 +41,7 @@ type VirtualMachineResourceModel struct {
 	Timeouts                  *VirtualMachineTerraformTimeouts         `tfsdk:"timeouts"`
 }
 
-func VMToModel(ctx context.Context, v *service.VirtualMachine, state *VirtualMachineResourceModel) VirtualMachineResourceModel {
+func VMToModel(ctx context.Context, v *service.VirtualMachine, state *VirtualMachineResourceModel) *VirtualMachineResourceModel {
 	definedDisks, computedDisks := sortComputedAndDefinedDisks(ctx, v.Disks, &state.Disks)
 	definedNics, computedNics := sortComputedAndDefinedNics(ctx, v.NetworkInterfaces, &state.NetworkInterfaces)
 	definedPCI, computedPCI := sortComputedAndDefinedPCIDevices(ctx, v.PCIDevices, &state.PCIDevices)
@@ -88,7 +88,7 @@ func VMToModel(ctx context.Context, v *service.VirtualMachine, state *VirtualMac
 		m.Agent = &a
 	}
 
-	return m
+	return &m
 }
 
 func sortComputedAndDefinedDisks(ctx context.Context, disks []vm.VirtualMachineDisk, state *t.VirtualMachineDiskSetValue) ([]vm.VirtualMachineDisk, []vm.VirtualMachineDisk) {

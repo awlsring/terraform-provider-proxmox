@@ -29,3 +29,14 @@ func (c *Proxmox) StartVirtualMachine(ctx context.Context, node string, vmid int
 
 	return nil
 }
+
+func (c *Proxmox) StopVirtualMachine(ctx context.Context, node string, vmid int) error {
+	vmId := strconv.Itoa(vmid)
+	request := c.client.StopVirtualMachine(ctx, node, vmId)
+	_, h, err := c.client.StopVirtualMachineExecute(request)
+	if err != nil {
+		return errors.ApiError(h, err)
+	}
+
+	return nil
+}
