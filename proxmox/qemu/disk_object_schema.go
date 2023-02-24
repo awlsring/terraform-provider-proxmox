@@ -4,18 +4,22 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/defaults"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
 var DiskObjectSchema = schema.NestedAttributeObject{
+	PlanModifiers: []planmodifier.Object{
+		objectplanmodifier.UseStateForUnknown(),
+	},
 	Attributes: map[string]schema.Attribute{
 		"storage": schema.StringAttribute{
 			Required:    true,
 			Description: "The storage the disk is on.",
 		},
 		"file_format": schema.StringAttribute{
-			Computed:    true,
 			Optional:    true,
 			Description: "The file format of the disk.",
 			Validators: []validator.String{
@@ -36,6 +40,7 @@ var DiskObjectSchema = schema.NestedAttributeObject{
 			Description: "Whether to use an iothread for the disk.",
 			PlanModifiers: []planmodifier.Bool{
 				defaults.DefaultBool(false),
+				boolplanmodifier.UseStateForUnknown(),
 			},
 		},
 		"speed_limits": schema.SingleNestedAttribute{
@@ -78,6 +83,7 @@ var DiskObjectSchema = schema.NestedAttributeObject{
 			Description: "Whether to use SSD emulation. conflicts with virtio disk type.",
 			PlanModifiers: []planmodifier.Bool{
 				defaults.DefaultBool(false),
+				boolplanmodifier.UseStateForUnknown(),
 			},
 		},
 		"position": schema.Int64Attribute{
@@ -90,6 +96,7 @@ var DiskObjectSchema = schema.NestedAttributeObject{
 			Description: "Whether the disk has discard enabled.",
 			PlanModifiers: []planmodifier.Bool{
 				defaults.DefaultBool(true),
+				boolplanmodifier.UseStateForUnknown(),
 			},
 		},
 	},

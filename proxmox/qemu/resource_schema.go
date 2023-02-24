@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -288,9 +289,6 @@ var ResourceSchema = schema.Schema{
 				"cpu_units": schema.Int64Attribute{
 					Optional:    true,
 					Description: "The CPU units.",
-					// PlanModifiers: []planmodifier.Int64{
-					// 	defaults.DefaultInt64(100),
-					// },
 				},
 			},
 		},
@@ -322,6 +320,9 @@ var ResourceSchema = schema.Schema{
 			Optional:     true,
 			CustomType:   t.NewVirtualMachineNetworkInterfaceSetType(),
 			NestedObject: NetworkInterfaceObjectSchema,
+			PlanModifiers: []planmodifier.Set{
+				setplanmodifier.UseStateForUnknown(),
+			},
 		},
 		"computed_network_interfaces": schema.SetNestedAttribute{
 			Computed:     true,
@@ -438,57 +439,25 @@ var ResourceSchema = schema.Schema{
 						},
 					},
 				},
-				"ip": schema.ListNestedAttribute{
-					Optional: true,
+				"ip": schema.SetNestedAttribute{
+					Optional:   true,
+					CustomType: t.NewCloudInitIpSetType(),
 					NestedObject: schema.NestedAttributeObject{
 						Attributes: map[string]schema.Attribute{
 							"v4": schema.SingleNestedAttribute{
-								Optional: true,
-								Attributes: map[string]schema.Attribute{
-									"dhcp": schema.BoolAttribute{
-										Optional:    true,
-										Description: "Whether to use DHCP to get the IP address.",
-									},
-									"address": schema.StringAttribute{
-										Optional:    true,
-										Description: "The IP address to use for the machine.",
-									},
-									"netmask": schema.StringAttribute{
-										Optional:    true,
-										Description: "The IP address netmask to use for the machine.",
-									},
-									"gateway": schema.StringAttribute{
-										Optional:    true,
-										Description: "The gateway to use for the machine.",
-									},
-								},
+								Optional:   true,
+								Attributes: t.CloudInitIpSchema,
 							},
 							"v6": schema.SingleNestedAttribute{
-								Optional: true,
-								Attributes: map[string]schema.Attribute{
-									"dhcp": schema.BoolAttribute{
-										Optional:    true,
-										Description: "Whether to use DHCP to get the IP address.",
-									},
-									"address": schema.StringAttribute{
-										Optional:    true,
-										Description: "The IP address to use for the machine.",
-									},
-									"netmask": schema.StringAttribute{
-										Optional:    true,
-										Description: "The IP address netmask to use for the machine.",
-									},
-									"gateway": schema.StringAttribute{
-										Optional:    true,
-										Description: "The gateway to use for the machine.",
-									},
-								},
+								Optional:   true,
+								Attributes: t.CloudInitIpSchema,
 							},
 						},
 					},
 				},
 				"dns": schema.SingleNestedAttribute{
 					Optional: true,
+
 					Attributes: map[string]schema.Attribute{
 						"nameserver": schema.StringAttribute{
 							Optional:    true,

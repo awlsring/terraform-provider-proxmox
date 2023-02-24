@@ -1,6 +1,7 @@
 package service
 
 import (
+	"net/url"
 	"strings"
 )
 
@@ -59,6 +60,20 @@ func StringSliceToLinedString(l []string) string {
 		str = str + s + "\n"
 	}
 	return str
+}
+
+func StringListToString(stringList []string) string {
+	return strings.Join(stringList, "\n")
+}
+
+func EncodeStringList(sl []string) *string {
+	if len(sl) == 0 {
+		return nil
+	}
+	l := StringListToString(sl)
+	encodedKey := url.QueryEscape(l)
+	en := strings.Replace(encodedKey, "+", "%20", -1)
+	return &en
 }
 
 func StringSliceToLinedStringPtr(l []string) *string {

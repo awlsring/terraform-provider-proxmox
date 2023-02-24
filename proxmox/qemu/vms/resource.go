@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	_ resource.Resource                   = &virtualMachineResource{}
-	_ resource.ResourceWithConfigure      = &virtualMachineResource{}
-	_ resource.ResourceWithValidateConfig = &virtualMachineResource{}
+	_ resource.Resource               = &virtualMachineResource{}
+	_ resource.ResourceWithConfigure  = &virtualMachineResource{}
+	_ resource.ResourceWithModifyPlan = &virtualMachineResource{}
 )
 
 func Resource() resource.Resource {
@@ -30,6 +30,35 @@ func (r *virtualMachineResource) Metadata(_ context.Context, req resource.Metada
 	resp.TypeName = req.ProviderTypeName + "_virtual_machine"
 }
 
+func (r *virtualMachineResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	tflog.Info(ctx, "ModifyPlan virtual machine method")
+	var plan qemu.VirtualMachineResourceModel
+	diags := req.Plan.Get(ctx, &plan)
+	if diags.HasError() {
+		tflog.Info(ctx, "Plan is delete, skipping")
+		return
+	}
+
+	var state qemu.VirtualMachineResourceModel
+	diags = req.State.Get(ctx, &state)
+	if diags.HasError() {
+		tflog.Info(ctx, "Plan is create, skipping")
+		return
+	}
+
+	// carry over computed values sets to prevent unnecessary diffs
+	amended := plan
+	amended.ComputedDisks = state.ComputedDisks
+	amended.ComputedNetworkInterfaces = state.ComputedNetworkInterfaces
+	amended.ComputedPCIDevices = state.ComputedPCIDevices
+
+	diags = resp.Plan.Set(ctx, &amended)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
 func (r *virtualMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = qemu.ResourceSchema
 }
@@ -42,13 +71,8 @@ func (r *virtualMachineResource) Configure(_ context.Context, req resource.Confi
 	r.client = req.ProviderData.(*service.Proxmox)
 }
 
-func (r *virtualMachineResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	tflog.Debug(ctx, "Validate Config virtual machine method")
-	tflog.Debug(ctx, fmt.Sprintf("virtual machine '%v'", req.Config))
-}
-
 func (r *virtualMachineResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	tflog.Debug(ctx, "Create virtual machine method")
+	tflog.Info(ctx, "Create virtual machine method")
 	var plan qemu.VirtualMachineResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -56,12 +80,8 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	tflog.Debug(ctx, fmt.Sprintf("virtual machine '%v'", plan))
-	tflog.Debug(ctx, fmt.Sprintf("disks specified '%v'", len(plan.Disks.Elements())))
-	tflog.Debug(ctx, fmt.Sprintf("nics specified '%v'", len(plan.NetworkInterfaces.Elements())))
-
 	// create
-	tflog.Debug(ctx, "Creating virtual machine")
+	tflog.Info(ctx, "Creating virtual machine")
 	err := r.routeCreateVm(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -72,7 +92,7 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 	}
 
 	// // configure
-	tflog.Debug(ctx, "Configuring virtual machine")
+	tflog.Info(ctx, "Configuring virtual machine")
 	err = r.configureVm(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -83,7 +103,7 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 	}
 
 	// read
-	tflog.Debug(ctx, "Reading virtual machine")
+	tflog.Info(ctx, "Reading virtual machine")
 	m, err := r.readModelWithContext(ctx, plan.Node.ValueString(), int(plan.ID.ValueInt64()), &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -95,7 +115,7 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 
 	// launch
 	if plan.StartOnCreate.ValueBool() {
-		tflog.Debug(ctx, "Starting virtual machine")
+		tflog.Info(ctx, "Starting virtual machine")
 		err = r.client.StartVirtualMachine(ctx, plan.Node.ValueString(), int(plan.ID.ValueInt64()))
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -120,7 +140,7 @@ func (r *virtualMachineResource) readModelWithContext(ctx context.Context, node 
 	}
 
 	j, _ := json.Marshal(vm)
-	tflog.Debug(ctx, fmt.Sprintf("vm '%v'", string(j)))
+	tflog.Info(ctx, fmt.Sprintf("vm '%v'", string(j)))
 
 	model := qemu.VMToModel(ctx, vm, state)
 	model.Clone = state.Clone
@@ -128,13 +148,13 @@ func (r *virtualMachineResource) readModelWithContext(ctx context.Context, node 
 	model.Timeouts = state.Timeouts
 	model.StartOnCreate = state.StartOnCreate
 
-	tflog.Debug(ctx, fmt.Sprintf("model '%v'", model.ComputedDisks))
+	tflog.Info(ctx, fmt.Sprintf("model '%v'", model.ComputedDisks))
 
 	return model, nil
 }
 
 func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	tflog.Debug(ctx, "Read virtual machine method")
+	tflog.Info(ctx, "Read virtual machine method")
 	var state qemu.VirtualMachineResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -143,7 +163,7 @@ func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	// read
-	tflog.Debug(ctx, "Reading virtual machine")
+	tflog.Info(ctx, "Reading virtual machine")
 	m, err := r.readModelWithContext(ctx, state.Node.ValueString(), int(state.ID.ValueInt64()), &state)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -152,58 +172,17 @@ func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequ
 		)
 		return
 	}
+	tflog.Info(ctx, fmt.Sprintf("computed disks '%v'", m.ComputedDisks))
+	m.ComputedDisks = state.ComputedDisks
+	m.ComputedNetworkInterfaces = state.ComputedNetworkInterfaces
+	m.ComputedPCIDevices = state.ComputedPCIDevices
 
 	diags = resp.State.Set(ctx, &m)
 	resp.Diagnostics.Append(diags...)
 }
 
-func (r *virtualMachineResource) postConfigureVmState(ctx context.Context, node string, id int) error {
-	status, err := r.client.GetVirtualMachineStatus(ctx, node, id)
-	if err != nil {
-		return err
-	}
-	tflog.Debug(ctx, "Virtual machine status: "+string(status.Status))
-
-	if status.Status == proxmox.VIRTUALMACHINESTATUS_STOPPED {
-		tflog.Debug(ctx, "Starting virtual machine")
-		err = r.client.StartVirtualMachine(ctx, node, id)
-		if err != nil {
-			return err
-		}
-
-		err := r.waitForStateChange(ctx, node, id, proxmox.VIRTUALMACHINESTATUS_RUNNING)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (r *virtualMachineResource) preConfigureVmState(ctx context.Context, node string, id int) error {
-	status, err := r.client.GetVirtualMachineStatus(ctx, node, id)
-	if err != nil {
-		return err
-	}
-
-	if status.Status == "running" {
-		tflog.Debug(ctx, "Stopping virtual machine")
-		err = r.client.StopVirtualMachine(ctx, node, id)
-		if err != nil {
-			return err
-		}
-
-		err := r.waitForStateChange(ctx, node, id, proxmox.VIRTUALMACHINESTATUS_STOPPED)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (r *virtualMachineResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	tflog.Debug(ctx, "Update virtual machine method")
+	tflog.Info(ctx, "Update virtual machine method")
 	var plan qemu.VirtualMachineResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -221,19 +200,32 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 	node := plan.Node.ValueString()
 	vmId := int(state.ID.ValueInt64())
 
-	err := r.preConfigureVmState(ctx, node, vmId)
+	wasRunning := false
+	status, err := r.client.GetVirtualMachineStatus(ctx, node, vmId)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error configuring virtual machine",
+			"Error getting virtual machine state",
 			"Could not configure virtual machine, unexpected error: "+err.Error(),
 		)
 		return
 	}
 
-	tflog.Debug(ctx, fmt.Sprintf("vm state '%v'", state))
-	tflog.Debug(ctx, fmt.Sprintf("vm plan '%v'", plan))
+	if status.Status == proxmox.VIRTUALMACHINESTATUS_RUNNING {
+		wasRunning = true
+		err = r.stopVm(ctx, node, vmId)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error stopping virtual machine",
+				"Could not stop virtual machine, unexpected error: "+err.Error(),
+			)
+			return
+		}
+	}
 
-	tflog.Debug(ctx, "Configuring virtual machine")
+	tflog.Info(ctx, fmt.Sprintf("vm state '%v'", state))
+	tflog.Info(ctx, fmt.Sprintf("vm plan '%v'", plan))
+
+	tflog.Info(ctx, "Configuring virtual machine")
 	err = r.configureVm(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -243,7 +235,7 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	tflog.Debug(ctx, "Reading virtual machine")
+	tflog.Info(ctx, "Reading virtual machine")
 	m, err := r.readModelWithContext(ctx, node, vmId, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -253,13 +245,15 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	err = r.postConfigureVmState(ctx, node, vmId)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error configuring virtual machine",
-			"Could not configure virtual machine, unexpected error: "+err.Error(),
-		)
-		return
+	if wasRunning {
+		err = r.startVm(ctx, node, vmId)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error configuring virtual machine",
+				"Could not configure virtual machine, unexpected error: "+err.Error(),
+			)
+			return
+		}
 	}
 
 	diags = resp.State.Set(ctx, &m)
@@ -269,39 +263,8 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 	}
 }
 
-// func CompareState(state *qemu.VirtualMachineResourceModel, plan qemu.VirtualMachineResourceModel) *qemu.VirtualMachineResourceModel {
-// 	opts := cmp.Options{
-// 		cmp.Transformer("ZeroIfDifferent", func(x int) int {
-// 			return 0 // Return 0 if the two int values are different
-// 		}),
-// 	}
-
-// 	// Use cmp.Diff with the options to compare the two structs
-// 	diff := cmp.Diff(state, plan, opts...)
-
-// 	// Create a new struct with the differing fields updated
-// 	var result *qemu.VirtualMachineResourceModel
-// 	if diff == "" {
-// 		result = state // If the structs are the same, return the original struct
-// 	} else {
-// 		// Use reflect to update the fields in the new struct
-// 		result = state
-// 		diffList := cmp.
-// 		for _, d := range diffList {
-// 			if d[0] == '+' {
-// 				fieldName := d[2:strings.Index(d, ":")]
-// 				fieldValue := d[strings.Index(d, ":")+1:]
-// 				field := reflect.ValueOf(&result).Elem().FieldByName(fieldName)
-// 				if field.IsValid() {
-// 					field.SetString(fieldValue)
-// 				}
-// 			}
-// 		}
-// 	}
-// }
-
 func (r *virtualMachineResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	tflog.Debug(ctx, "Delete virtual machine method")
+	tflog.Info(ctx, "Delete virtual machine method")
 	var state qemu.VirtualMachineResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -309,8 +272,17 @@ func (r *virtualMachineResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 
-	tflog.Debug(ctx, fmt.Sprintf("Deleting vm: '%s' '%v'", state.Node.ValueString(), state.ID.ValueInt64()))
-	err := r.client.DeleteVirtualMachine(ctx, state.Node.ValueString(), int(state.ID.ValueInt64()))
+	err := r.stopVm(ctx, state.Node.ValueString(), int(state.ID.ValueInt64()))
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error stopping virtual machine",
+			"Could not stop virtual machine, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	tflog.Info(ctx, fmt.Sprintf("Deleting vm: '%s' '%v'", state.Node.ValueString(), state.ID.ValueInt64()))
+	err = r.client.DeleteVirtualMachine(ctx, state.Node.ValueString(), int(state.ID.ValueInt64()))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting vm",
