@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"strconv"
 
 	"github.com/awlsring/proxmox-go/proxmox"
@@ -22,10 +20,6 @@ type CloneVirtualMachineInput struct {
 }
 
 func (c *Proxmox) CloneVirtualMachine(ctx context.Context, input *CloneVirtualMachineInput) error {
-
-	j, _ := json.Marshal(input)
-	fmt.Println("passed input", string(j))
-
 	vmId := float32(input.VmId)
 	sourceId := strconv.Itoa(input.Source)
 	content := proxmox.CloneVirtualMachineRequestContent{

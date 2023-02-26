@@ -9,6 +9,7 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -145,21 +146,25 @@ func (r *virtualMachineResource) readModelWithContext(ctx context.Context, node 
 	tflog.Debug(ctx, fmt.Sprintf("vm '%v'", string(j)))
 
 	model := qemu.VMToModel(ctx, vm, state)
+
+	if !state.ResourcePool.IsNull() {
+		tflog.Debug(ctx, "Determining resource pool")
+		in, pool, err := r.client.DetermineVirtualMachineResourcePool(ctx, id)
+		if err != nil {
+			tflog.Error(ctx, "Error determining resource pool:"+err.Error())
+			return nil, err
+		}
+		if in {
+			tflog.Debug(ctx, fmt.Sprintf("Resource pool '%v'", pool))
+			model.ResourcePool = types.StringValue(pool)
+		}
+	}
+
+	// pass resource tf metadata
 	model.Clone = state.Clone
 	model.ISO = state.ISO
 	model.Timeouts = state.Timeouts
 	model.StartOnCreate = state.StartOnCreate
-
-	tflog.Debug(ctx, fmt.Sprintf("model '%v'", model))
-	tflog.Debug(ctx, fmt.Sprintf("ci '%v'", model.CloudInit))
-	tflog.Debug(ctx, fmt.Sprintf("dns '%v'", model.CloudInit.DNS))
-	tflog.Debug(ctx, fmt.Sprintf("user '%v'", model.CloudInit.User))
-	for _, ip := range model.CloudInit.IP.Configs {
-		tflog.Debug(ctx, fmt.Sprintf("ip '%v'", ip))
-		tflog.Debug(ctx, fmt.Sprintf("position '%v'", ip.Positition))
-		tflog.Debug(ctx, fmt.Sprintf("v4 '%v'", ip.V4))
-		tflog.Debug(ctx, fmt.Sprintf("v6 '%v'", ip.V6))
-	}
 
 	return model, nil
 }
@@ -242,6 +247,15 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 		resp.Diagnostics.AddError(
 			"Error configuring virtual machine",
 			"Could not configure virtual machine, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	err = r.modifyResourcePool(ctx, vmId, state.ResourcePool, plan.ResourcePool)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error modifying virtual machine resource pool",
+			"Could not modify virtual machine resource pool, unexpected error: "+err.Error(),
 		)
 		return
 	}

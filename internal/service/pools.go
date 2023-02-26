@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"strconv"
 
 	"github.com/awlsring/proxmox-go/proxmox"
@@ -118,7 +116,7 @@ type UpdatePoolInput struct {
 	Comment *string
 	Delete  bool
 	Storage []string
-	Vms     []string
+	Vms     []int
 }
 
 func (c *Proxmox) UpdatePool(ctx context.Context, input *UpdatePoolInput) error {
@@ -135,13 +133,13 @@ func (c *Proxmox) UpdatePool(ctx context.Context, input *UpdatePoolInput) error 
 		content.Storage = &conv
 	}
 	if len(input.Vms) != 0 {
-		conv := SliceToStringCommaList(input.Vms)
+		ids := []string{}
+		for _, vm := range input.Vms {
+			ids = append(ids, strconv.Itoa(vm))
+		}
+		conv := SliceToStringCommaList(ids)
 		content.Vms = &conv
 	}
-
-	j, _ := json.Marshal(input)
-	fmt.Println("Input passed")
-	fmt.Println(string(j))
 
 	request = request.ModifyPoolRequestContent(content)
 

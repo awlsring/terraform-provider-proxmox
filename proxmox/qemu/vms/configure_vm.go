@@ -10,9 +10,42 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
 	t "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
+
+func (r *virtualMachineResource) modifyResourcePool(ctx context.Context, id int, was types.String, is types.String) error {
+	tflog.Debug(ctx, "modifyResourcePool virtual machine method")
+	tflog.Debug(ctx, fmt.Sprintf("was: %s", was.ValueString()))
+	tflog.Debug(ctx, fmt.Sprintf("is: %s", is.ValueString()))
+
+	if was.IsNull() && is.IsNull() {
+		tflog.Debug(ctx, "modifyResourcePool was and is null, skipping")
+		return nil
+	}
+
+	if was.IsNull() && !is.IsNull() {
+		tflog.Debug(ctx, "modifyResourcePool was null, adding to pool")
+		return r.client.AddVirtualMachineToResourcePool(ctx, id, is.ValueString())
+	}
+
+	if !was.IsNull() && is.IsNull() {
+		tflog.Debug(ctx, "modifyResourcePool is null, removing from pool")
+		return r.client.RemoveVirtualMachineFromResourcePool(ctx, id, was.ValueString())
+	}
+
+	if was.ValueString() != is.ValueString() {
+		tflog.Debug(ctx, "modifyResourcePool was and is not null, moving between pools")
+		err := r.client.RemoveVirtualMachineFromResourcePool(ctx, id, was.ValueString())
+		if err != nil {
+			return err
+		}
+		return r.client.AddVirtualMachineToResourcePool(ctx, id, is.ValueString())
+	}
+
+	return nil
+}
 
 func (r *virtualMachineResource) configureVm(ctx context.Context, plan *qemu.VirtualMachineResourceModel) error {
 	tflog.Debug(ctx, "configure virtual machine method")

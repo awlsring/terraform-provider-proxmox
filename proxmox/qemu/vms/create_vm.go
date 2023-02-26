@@ -56,13 +56,13 @@ func (r *virtualMachineResource) iso(ctx context.Context, plan *qemu.VirtualMach
 	tflog.Debug(ctx, "iso virtual machine creation method")
 
 	err := r.client.CreateVirtualMachineIso(ctx, &service.CreateVirtualMachineIsoInput{
-		Node:        plan.Node.ValueString(),
-		VmId:        int(plan.ID.ValueInt64()),
-		IsoStorage:  plan.ISO.Storage.ValueString(),
-		IsoImage:    plan.ISO.Image.ValueString(),
-		Name:        utils.OptionalToPointerString(plan.Name.ValueString()),
-		Description: utils.OptionalToPointerString(plan.Description.ValueString()),
-		// ResourcePool: utils.OptionalToPointerString(plan.ResourcePool.ValueString()),
+		Node:         plan.Node.ValueString(),
+		VmId:         int(plan.ID.ValueInt64()),
+		IsoStorage:   plan.ISO.Storage.ValueString(),
+		IsoImage:     plan.ISO.Image.ValueString(),
+		Name:         utils.OptionalToPointerString(plan.Name.ValueString()),
+		Description:  utils.OptionalToPointerString(plan.Description.ValueString()),
+		ResourcePool: utils.OptionalToPointerString(plan.ResourcePool.ValueString()),
 	})
 	if err != nil {
 		return nil

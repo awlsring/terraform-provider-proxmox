@@ -94,13 +94,17 @@ func (r *poolResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 
 	if len(plan.Members) != 0 {
-		vms := []string{}
+		vms := []int{}
 		storage := []string{}
 
 		for _, member := range plan.Members {
 			switch member.Type.ValueString() {
 			case "qemu":
-				vms = append(vms, member.ID.ValueString())
+				vmid, err := strconv.Atoi(member.ID.ValueString())
+				if err != nil {
+					continue
+				}
+				vms = append(vms, vmid)
 			case "storage":
 				storage = append(storage, member.ID.ValueString())
 			}
@@ -281,12 +285,16 @@ func determineNewAndRemovedMembers(previous []poolMemberModel, current []poolMem
 }
 
 func (r *poolResource) changePoolMembers(ctx context.Context, poolId string, comment *string, members []poolMemberModel, remove bool) error {
-	vmMembers := []string{}
+	vmMembers := []int{}
 	storageMembers := []string{}
 	for _, member := range members {
 		switch member.Type.ValueString() {
 		case string(proxmox.POOLMEMBERTYPE_QEMU):
-			vmMembers = append(vmMembers, member.ID.ValueString())
+			vmid, err := strconv.Atoi(member.ID.ValueString())
+			if err != nil {
+				return err
+			}
+			vmMembers = append(vmMembers, vmid)
 		case string(proxmox.POOLMEMBERTYPE_STORAGE):
 			storageMembers = append(storageMembers, member.ID.ValueString())
 		}
