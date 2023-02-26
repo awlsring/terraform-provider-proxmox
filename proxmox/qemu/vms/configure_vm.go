@@ -32,7 +32,7 @@ func (r *virtualMachineResource) configureVm(ctx context.Context, plan *qemu.Vir
 		Disks:             FormDiskConfig(ctx, plan.Disks),
 		NetworkInterfaces: FormNetworkInterfaceConfig(plan.NetworkInterfaces),
 		Memory:            FormMemoryConfig(&plan.Memory),
-		CloudInit:         FormCloudInitConfig(plan.CloudInit),
+		CloudInit:         FormCloudInitConfig(ctx, plan.CloudInit),
 		OsType:            FormOSTypeConfig(plan.Type),
 		MachineType:       utils.OptionalToPointerString(plan.MachineType.ValueString()),
 		KVMArguments:      utils.OptionalToPointerString(plan.KVMArguments.ValueString()),
@@ -162,10 +162,12 @@ func FormMemoryConfig(mem *qemu.VirtualMachineMemoryOptions) *service.ConfigureV
 	return &m
 }
 
-func FormCloudInitConfig(ci *qemu.VirtualMachineCloudInitOptions) *service.ConfigureVirtualMachineCloudInitOptions {
+func FormCloudInitConfig(ctx context.Context, ci *t.VirtualMachineCloudInitModel) *service.ConfigureVirtualMachineCloudInitOptions {
+	tflog.Debug(ctx, fmt.Sprintf("Cloud Init: %v", ci))
 	if ci != nil {
 		c := service.ConfigureVirtualMachineCloudInitOptions{}
 		if ci.User != nil {
+			tflog.Debug(ctx, fmt.Sprintf("Configuring user: %v", ci.User))
 			user := service.ConfigureVirtualMachineCloudInitUserOptions{}
 			if !ci.User.Name.IsNull() || ci.User.Name.IsUnknown() {
 				user.Name = utils.OptionalToPointerString(ci.User.Name.ValueString())
@@ -173,26 +175,29 @@ func FormCloudInitConfig(ci *qemu.VirtualMachineCloudInitOptions) *service.Confi
 			if !ci.User.Password.IsNull() || ci.User.Password.IsUnknown() {
 				user.Password = utils.OptionalToPointerString(ci.User.Password.ValueString())
 			}
-			if ci.User.PublicKeys != nil {
-				for _, key := range ci.User.PublicKeys {
-					user.PublicKeys = append(user.PublicKeys, key.ValueString())
-				}
-			}
+			user.PublicKeys = utils.ListTypeToStringSlice(ci.User.PublicKeys)
+			tflog.Debug(ctx, fmt.Sprintf("Determined User: %v", user))
 			c.User = &user
 		}
 
-		for _, ipc := range ci.IP {
+		tflog.Debug(ctx, fmt.Sprintf("IP Config amount: %v", len(ci.IP.Configs)))
+		configs := []service.ConfigureVirtualMachineCloudInitIpOptions{}
+		for _, ipc := range ci.IP.Configs {
+			tflog.Debug(ctx, fmt.Sprintf("IP Config: %v", ipc))
 			ip := service.ConfigureVirtualMachineCloudInitIpOptions{}
 			if ipc.V4 != nil {
-				ip.V4 = FormCloudInitIpConfig(ipc.V4)
+				ip.V4 = FormCloudInitIpConfig(ctx, ipc.V4)
 			}
 			if ipc.V6 != nil {
-				ip.V6 = FormCloudInitIpConfig(ipc.V6)
+				ip.V6 = FormCloudInitIpConfig(ctx, ipc.V6)
 			}
-			c.Ip = &ip
+			tflog.Debug(ctx, fmt.Sprintf("Determined IP Config: %v", ip))
+			configs = append(configs, ip)
 		}
+		c.Ip = configs
 
 		if ci.DNS != nil {
+			tflog.Debug(ctx, fmt.Sprintf("Configuring DNS: %v", ci.DNS))
 			dns := service.ConfigureVirtualMachineCloudInitDnsOptions{}
 			if !ci.DNS.Nameserver.IsNull() || !ci.DNS.Nameserver.IsUnknown() {
 				dns.Nameserver = utils.OptionalToPointerString(ci.DNS.Nameserver.ValueString())
@@ -200,23 +205,31 @@ func FormCloudInitConfig(ci *qemu.VirtualMachineCloudInitOptions) *service.Confi
 			if !ci.DNS.Domain.IsNull() || !ci.DNS.Domain.IsUnknown() {
 				dns.Domain = utils.OptionalToPointerString(ci.DNS.Domain.ValueString())
 			}
+			tflog.Debug(ctx, fmt.Sprintf("Determined DNS: %v", dns))
+			c.Dns = &dns
 		}
 
 		return &c
 	}
+	tflog.Debug(ctx, "Cloud Init is nil")
 	return nil
 }
 
-func FormCloudInitIpConfig(ipConfig *qemu.VirtualMachineCloudInitIpConfigOptions) *service.ConfigureVirtualMachineCloudInitIpConfigOptions {
+func FormCloudInitIpConfig(ctx context.Context, ipConfig *t.VirtualMachineCloudInitIpConfigModel) *service.ConfigureVirtualMachineCloudInitIpConfigOptions {
 	config := service.ConfigureVirtualMachineCloudInitIpConfigOptions{}
+
+	tflog.Debug(ctx, fmt.Sprintf("IP Config address: %v", ipConfig.Address.ValueString()))
+	tflog.Debug(ctx, fmt.Sprintf("IP Config netmask: %v", ipConfig.Netmask.ValueString()))
+
 	if !ipConfig.DHCP.IsNull() || !ipConfig.DHCP.IsUnknown() {
 		config.DHCP = ipConfig.DHCP.ValueBool()
 	}
 	if !ipConfig.Gateway.IsNull() || !ipConfig.Gateway.IsUnknown() {
 		config.Gateway = utils.OptionalToPointerString(ipConfig.Gateway.ValueString())
 	}
-	if !ipConfig.Address.IsNull() || ipConfig.Address.IsUnknown() {
+	if (!ipConfig.Address.IsNull() || !ipConfig.Address.IsUnknown()) && (!ipConfig.Netmask.IsNull() || !ipConfig.Netmask.IsUnknown()) {
 		config.Address = utils.OptionalToPointerString(ipConfig.Address.ValueString())
+		config.Netmask = utils.OptionalToPointerString(ipConfig.Netmask.ValueString())
 	}
 	return &config
 }

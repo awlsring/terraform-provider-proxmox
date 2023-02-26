@@ -31,18 +31,18 @@ func (r *virtualMachineResource) Metadata(_ context.Context, req resource.Metada
 }
 
 func (r *virtualMachineResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	tflog.Info(ctx, "ModifyPlan virtual machine method")
+	tflog.Debug(ctx, "ModifyPlan virtual machine method")
 	var plan qemu.VirtualMachineResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	if diags.HasError() {
-		tflog.Info(ctx, "Plan is delete, skipping")
+		tflog.Debug(ctx, "Plan is delete, skipping")
 		return
 	}
 
 	var state qemu.VirtualMachineResourceModel
 	diags = req.State.Get(ctx, &state)
 	if diags.HasError() {
-		tflog.Info(ctx, "Plan is create, skipping")
+		tflog.Debug(ctx, "Plan is create, skipping")
 		return
 	}
 
@@ -72,7 +72,7 @@ func (r *virtualMachineResource) Configure(_ context.Context, req resource.Confi
 }
 
 func (r *virtualMachineResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	tflog.Info(ctx, "Create virtual machine method")
+	tflog.Debug(ctx, "Create virtual machine method")
 	var plan qemu.VirtualMachineResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -80,8 +80,10 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
+	tflog.Debug(ctx, fmt.Sprintf("plan '%v'", plan.CloudInit))
+
 	// create
-	tflog.Info(ctx, "Creating virtual machine")
+	tflog.Debug(ctx, "Creating virtual machine")
 	err := r.routeCreateVm(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -92,7 +94,7 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 	}
 
 	// // configure
-	tflog.Info(ctx, "Configuring virtual machine")
+	tflog.Debug(ctx, "Configuring virtual machine")
 	err = r.configureVm(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -103,7 +105,7 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 	}
 
 	// read
-	tflog.Info(ctx, "Reading virtual machine")
+	tflog.Debug(ctx, "Reading virtual machine")
 	m, err := r.readModelWithContext(ctx, plan.Node.ValueString(), int(plan.ID.ValueInt64()), &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -115,7 +117,7 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 
 	// launch
 	if plan.StartOnCreate.ValueBool() {
-		tflog.Info(ctx, "Starting virtual machine")
+		tflog.Debug(ctx, "Starting virtual machine")
 		err = r.client.StartVirtualMachine(ctx, plan.Node.ValueString(), int(plan.ID.ValueInt64()))
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -140,7 +142,7 @@ func (r *virtualMachineResource) readModelWithContext(ctx context.Context, node 
 	}
 
 	j, _ := json.Marshal(vm)
-	tflog.Info(ctx, fmt.Sprintf("vm '%v'", string(j)))
+	tflog.Debug(ctx, fmt.Sprintf("vm '%v'", string(j)))
 
 	model := qemu.VMToModel(ctx, vm, state)
 	model.Clone = state.Clone
@@ -148,13 +150,22 @@ func (r *virtualMachineResource) readModelWithContext(ctx context.Context, node 
 	model.Timeouts = state.Timeouts
 	model.StartOnCreate = state.StartOnCreate
 
-	tflog.Info(ctx, fmt.Sprintf("model '%v'", model.ComputedDisks))
+	tflog.Debug(ctx, fmt.Sprintf("model '%v'", model))
+	tflog.Debug(ctx, fmt.Sprintf("ci '%v'", model.CloudInit))
+	tflog.Debug(ctx, fmt.Sprintf("dns '%v'", model.CloudInit.DNS))
+	tflog.Debug(ctx, fmt.Sprintf("user '%v'", model.CloudInit.User))
+	for _, ip := range model.CloudInit.IP.Configs {
+		tflog.Debug(ctx, fmt.Sprintf("ip '%v'", ip))
+		tflog.Debug(ctx, fmt.Sprintf("position '%v'", ip.Positition))
+		tflog.Debug(ctx, fmt.Sprintf("v4 '%v'", ip.V4))
+		tflog.Debug(ctx, fmt.Sprintf("v6 '%v'", ip.V6))
+	}
 
 	return model, nil
 }
 
 func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	tflog.Info(ctx, "Read virtual machine method")
+	tflog.Debug(ctx, "Read virtual machine method")
 	var state qemu.VirtualMachineResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -163,7 +174,7 @@ func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	// read
-	tflog.Info(ctx, "Reading virtual machine")
+	tflog.Debug(ctx, "Reading virtual machine")
 	m, err := r.readModelWithContext(ctx, state.Node.ValueString(), int(state.ID.ValueInt64()), &state)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -172,7 +183,7 @@ func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequ
 		)
 		return
 	}
-	tflog.Info(ctx, fmt.Sprintf("computed disks '%v'", m.ComputedDisks))
+	tflog.Debug(ctx, fmt.Sprintf("computed disks '%v'", m.ComputedDisks))
 	m.ComputedDisks = state.ComputedDisks
 	m.ComputedNetworkInterfaces = state.ComputedNetworkInterfaces
 	m.ComputedPCIDevices = state.ComputedPCIDevices
@@ -182,7 +193,7 @@ func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequ
 }
 
 func (r *virtualMachineResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	tflog.Info(ctx, "Update virtual machine method")
+	tflog.Debug(ctx, "Update virtual machine method")
 	var plan qemu.VirtualMachineResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -222,10 +233,10 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 		}
 	}
 
-	tflog.Info(ctx, fmt.Sprintf("vm state '%v'", state))
-	tflog.Info(ctx, fmt.Sprintf("vm plan '%v'", plan))
+	tflog.Debug(ctx, fmt.Sprintf("vm state '%v'", state))
+	tflog.Debug(ctx, fmt.Sprintf("vm plan '%v'", plan))
 
-	tflog.Info(ctx, "Configuring virtual machine")
+	tflog.Debug(ctx, "Configuring virtual machine")
 	err = r.configureVm(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -235,7 +246,7 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	tflog.Info(ctx, "Reading virtual machine")
+	tflog.Debug(ctx, "Reading virtual machine")
 	m, err := r.readModelWithContext(ctx, node, vmId, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -264,7 +275,7 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 }
 
 func (r *virtualMachineResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	tflog.Info(ctx, "Delete virtual machine method")
+	tflog.Debug(ctx, "Delete virtual machine method")
 	var state qemu.VirtualMachineResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -281,7 +292,7 @@ func (r *virtualMachineResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 
-	tflog.Info(ctx, fmt.Sprintf("Deleting vm: '%s' '%v'", state.Node.ValueString(), state.ID.ValueInt64()))
+	tflog.Debug(ctx, fmt.Sprintf("Deleting vm: '%s' '%v'", state.Node.ValueString(), state.ID.ValueInt64()))
 	err = r.client.DeleteVirtualMachine(ctx, state.Node.ValueString(), int(state.ID.ValueInt64()))
 	if err != nil {
 		resp.Diagnostics.AddError(

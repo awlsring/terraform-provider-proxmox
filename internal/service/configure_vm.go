@@ -91,7 +91,7 @@ type ConfigureVirtualMachineMemoryOptions struct {
 
 type ConfigureVirtualMachineCloudInitOptions struct {
 	User *ConfigureVirtualMachineCloudInitUserOptions
-	Ip   *ConfigureVirtualMachineCloudInitIpOptions
+	Ip   []ConfigureVirtualMachineCloudInitIpOptions
 	Dns  *ConfigureVirtualMachineCloudInitDnsOptions
 }
 
@@ -102,14 +102,16 @@ type ConfigureVirtualMachineCloudInitUserOptions struct {
 }
 
 type ConfigureVirtualMachineCloudInitIpOptions struct {
-	V4 *ConfigureVirtualMachineCloudInitIpConfigOptions
-	V6 *ConfigureVirtualMachineCloudInitIpConfigOptions
+	Position int
+	V4       *ConfigureVirtualMachineCloudInitIpConfigOptions
+	V6       *ConfigureVirtualMachineCloudInitIpConfigOptions
 }
 
 type ConfigureVirtualMachineCloudInitIpConfigOptions struct {
 	DHCP    bool
 	Address *string
 	Gateway *string
+	Netmask *string
 }
 
 type ConfigureVirtualMachineCloudInitDnsOptions struct {
@@ -194,6 +196,38 @@ func FormNetworkInterfaceString(opts ConfigureVirtualMachineNetworkInterfaceOpti
 	return &nicStr
 }
 
+func FormIpConfigString(v4 *ConfigureVirtualMachineCloudInitIpConfigOptions, v6 *ConfigureVirtualMachineCloudInitIpConfigOptions) *string {
+	ipStr := ""
+	if v4 != nil {
+		if v4.Address != nil && v4.Netmask != nil {
+			ipStr = ipStr + "ip=" + fmt.Sprintf("%s/%s", *v4.Address, *v4.Netmask)
+		} else if v4.DHCP {
+			ipStr = ipStr + "ip=dhcp"
+		}
+		if v4.Gateway != nil {
+			ipStr = ipStr + ",gw=" + *v4.Gateway
+		}
+	}
+	if v6 != nil {
+		if ipStr != "" {
+			ipStr = ipStr + ","
+		}
+		if v6.Address != nil && v6.Netmask != nil {
+			ipStr = ipStr + "ip6=" + fmt.Sprintf("%s/%s", *v6.Address, *v6.Netmask)
+		} else if v6.DHCP {
+			ipStr = ipStr + "ip6=dhcp"
+		}
+		if v6.Gateway != nil {
+			ipStr = ipStr + ",gw6=" + *v6.Gateway
+		}
+	}
+	if ipStr == "" {
+		return nil
+	}
+
+	return &ipStr
+}
+
 func FormPCIDeviceString() *string {
 	return nil
 }
@@ -230,9 +264,20 @@ func (c *Proxmox) ConfigureVirtualMachine(ctx context.Context, input *ConfigureV
 		content.Shares = PtrInt64ToPtrFloat(input.Memory.Shared)
 	}
 	if input.CloudInit != nil {
-		content.Ciuser = input.CloudInit.User.Name
-		content.Cipassword = input.CloudInit.User.Password
-		content.Sshkeys = StringSliceToLinedStringPtr(input.CloudInit.User.PublicKeys)
+		if input.CloudInit.User != nil {
+			content.Ciuser = input.CloudInit.User.Name
+			content.Cipassword = input.CloudInit.User.Password
+			content.Sshkeys = EncodeStringList(input.CloudInit.User.PublicKeys)
+		}
+		if input.CloudInit.Dns != nil {
+			content.Searchdomain = input.CloudInit.Dns.Domain
+			content.Nameserver = input.CloudInit.Dns.Nameserver
+		}
+		for _, n := range input.CloudInit.Ip {
+			config := FormIpConfigString(n.V4, n.V6)
+			fmt.Println("config str: ", *config)
+			vm.AllocateCiNetConfig(n.Position, config, &content)
+		}
 	}
 	if input.StartOnBoot {
 		onboot := float32(1)
@@ -241,7 +286,6 @@ func (c *Proxmox) ConfigureVirtualMachine(ctx context.Context, input *ConfigureV
 
 	for _, d := range input.Disks {
 		config := FormDiskString(d)
-		fmt.Println("disk config: " + *config)
 		vm.AllocateDiskConfig(d.InterfaceType, d.Position, config, &content)
 	}
 
@@ -254,7 +298,6 @@ func (c *Proxmox) ConfigureVirtualMachine(ctx context.Context, input *ConfigureV
 			n.MAC = vm.GenerateMAC()
 		}
 		config := FormNetworkInterfaceString(n)
-		fmt.Println("network config: " + *config)
 		vm.AllocateNetworkInterfaceConfig(n.Position, config, &content)
 	}
 

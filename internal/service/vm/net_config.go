@@ -29,3 +29,27 @@ func AllocateNetworkInterfaceConfig(position int, config *string, input *proxmox
 	}
 	return nil
 }
+
+func AllocateCiNetConfig(position int, config *string, input *proxmox.ApplyVirtualMachineConfigurationSyncRequestContent) error {
+	switch position {
+	case 0:
+		input.Ipconfig0 = config
+	case 1:
+		input.Ipconfig1 = config
+	case 2:
+		input.Ipconfig2 = config
+	case 3:
+		input.Ipconfig3 = config
+	case 4:
+		input.Ipconfig4 = config
+	case 5:
+		input.Ipconfig5 = config
+	case 6:
+		input.Ipconfig6 = config
+	case 7:
+		input.Ipconfig7 = config
+	default:
+		return fmt.Errorf("invalid position %v", position)
+	}
+	return nil
+}

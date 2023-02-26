@@ -22,9 +22,9 @@ type VirtualMachineCloudInitUser struct {
 }
 
 type VirtualMachineCloudInitIp struct {
-	Interface string
-	V4        *VirtualMachineCloudInitIpConfig
-	V6        *VirtualMachineCloudInitIpConfig
+	Position int
+	V4       *VirtualMachineCloudInitIpConfig
+	V6       *VirtualMachineCloudInitIpConfig
 }
 
 type VirtualMachineCloudInitIpConfig struct {
@@ -55,7 +55,7 @@ func DetermineCloudInitConfiguration(sum proxmox.VirtualMachineConfigurationSumm
 	}
 
 	if sum.HasSshkeys() {
-		pubs := utils.StringLinedToSlice(*sum.Sshkeys)
+		pubs := utils.DecodeStringList(sum.Sshkeys)
 		ciUser.PublicKeys = pubs
 		setUser = true
 	}
@@ -65,10 +65,12 @@ func DetermineCloudInitConfiguration(sum proxmox.VirtualMachineConfigurationSumm
 	setDns := false
 	ciDns := VirtualMachineCloudInitDns{}
 	if sum.HasNameserver() {
+		setDns = true
 		ciDns.Nameserver = sum.Nameserver
 	}
 
 	if sum.HasSearchdomain() {
+		setDns = true
 		ciDns.Domain = sum.Searchdomain
 	}
 
@@ -91,7 +93,7 @@ func setNetConfigs(cfg proxmox.VirtualMachineConfigurationSummary, config *Virtu
 	for i := 0; i < 7; i++ {
 		d := fmt.Sprintf("%s%v", "ipconfig", i)
 		if val, ok := cfgMap[d]; ok {
-			ipCfg, err := readIpConfigString(val.(string))
+			ipCfg, err := readIpConfigString(i, val.(string))
 			if err != nil {
 				continue
 			}
@@ -100,9 +102,11 @@ func setNetConfigs(cfg proxmox.VirtualMachineConfigurationSummary, config *Virtu
 	}
 }
 
-func readIpConfigString(str string) (VirtualMachineCloudInitIp, error) {
+func readIpConfigString(pos int, str string) (VirtualMachineCloudInitIp, error) {
 	// reference string; "ip=10.0.100.101/24,gw=10.0.100.1"
-	ip := VirtualMachineCloudInitIp{}
+	ip := VirtualMachineCloudInitIp{
+		Position: pos,
+	}
 
 	splits := strings.Split(str, ",")
 

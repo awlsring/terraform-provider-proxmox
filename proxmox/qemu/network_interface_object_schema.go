@@ -6,11 +6,17 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/defaults"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
 var NetworkInterfaceObjectSchema = schema.NestedAttributeObject{
+	PlanModifiers: []planmodifier.Object{
+		objectplanmodifier.UseStateForUnknown(),
+	},
 	Attributes: map[string]schema.Attribute{
 		"bridge": schema.StringAttribute{
 			Required:    true,
@@ -25,6 +31,7 @@ var NetworkInterfaceObjectSchema = schema.NestedAttributeObject{
 			Description: "Whether the network interface is enabled.",
 			PlanModifiers: []planmodifier.Bool{
 				defaults.DefaultBool(true),
+				boolplanmodifier.UseStateForUnknown(),
 			},
 		},
 		"use_firewall": schema.BoolAttribute{
@@ -33,6 +40,7 @@ var NetworkInterfaceObjectSchema = schema.NestedAttributeObject{
 			Description: "Whether the firewall for the network interface is enabled.",
 			PlanModifiers: []planmodifier.Bool{
 				defaults.DefaultBool(false),
+				boolplanmodifier.UseStateForUnknown(),
 			},
 		},
 		"mac_address": schema.StringAttribute{
@@ -42,6 +50,9 @@ var NetworkInterfaceObjectSchema = schema.NestedAttributeObject{
 			Validators: []validator.String{
 				stringvalidator.RegexMatches(regexp.MustCompile("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"), "must be a valid MAC address"),
 			},
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+			},
 		},
 		"model": schema.StringAttribute{
 			Computed:    true,
@@ -49,6 +60,7 @@ var NetworkInterfaceObjectSchema = schema.NestedAttributeObject{
 			Description: "The model of the network interface.",
 			PlanModifiers: []planmodifier.String{
 				defaults.DefaultString("virtio"),
+				stringplanmodifier.UseStateForUnknown(),
 			},
 			Validators: []validator.String{
 				stringvalidator.OneOf(
@@ -65,7 +77,7 @@ var NetworkInterfaceObjectSchema = schema.NestedAttributeObject{
 		},
 		"position": schema.Int64Attribute{
 			Required:    true,
-			Description: "The position of the network interface in the VM. (0, 1, 2, etc.)",
+			Description: "The position of the network interface in the VM as an int. Used to determine the interface name (net0, net1, etc).",
 		},
 		"vlan": schema.Int64Attribute{
 			Optional:    true,

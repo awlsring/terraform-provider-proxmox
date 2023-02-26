@@ -33,7 +33,7 @@ type VirtualMachineResourceModel struct {
 	MachineType               types.String                             `tfsdk:"machine_type"`
 	KVMArguments              types.String                             `tfsdk:"kvm_arguments"`
 	KeyboardLayout            types.String                             `tfsdk:"keyboard_layout"`
-	CloudInit                 *VirtualMachineCloudInitOptions          `tfsdk:"cloud_init"`
+	CloudInit                 *t.VirtualMachineCloudInitModel          `tfsdk:"cloud_init"`
 	Type                      types.String                             `tfsdk:"type"`
 	ResourcePool              types.String                             `tfsdk:"resource_pool"`
 	StartOnCreate             types.Bool                               `tfsdk:"start_on_create"`
@@ -59,6 +59,7 @@ func VMToModel(ctx context.Context, v *service.VirtualMachine, state *VirtualMac
 		ComputedNetworkInterfaces: t.VirtualMachineNetworkInterfaceToSetValue(ctx, computedNics),
 		PCIDevices:                t.VirtualMachinePCIDeviceToSetValue(ctx, definedPCI),
 		ComputedPCIDevices:        t.VirtualMachinePCIDeviceToSetValue(ctx, computedPCI),
+		CloudInit:                 t.CloudInitToModel(ctx, v.CloudInit),
 		StartOnNodeBoot:           types.BoolValue(v.StartOnBoot),
 	}
 
@@ -87,6 +88,12 @@ func VMToModel(ctx context.Context, v *service.VirtualMachine, state *VirtualMac
 		a := VMAgentToModel(v.Agent)
 		m.Agent = &a
 	}
+
+	// carry over statemetadata
+	m.Clone = state.Clone
+	m.ISO = state.ISO
+	m.Timeouts = state.Timeouts
+	m.StartOnCreate = state.StartOnCreate
 
 	return &m
 }
@@ -250,101 +257,6 @@ func VMMemoryToModel(memory *vm.VirtualMachineMemory) VirtualMachineMemoryOption
 	}
 
 	return m
-}
-
-type VirtualMachineCloudInitOptions struct {
-	User *VirtualMachineCloudInitUserOptions `tfsdk:"user"`
-	IP   []VirtualMachineCloudInitIpOptions  `tfsdk:"ip"`
-	DNS  *VirtualMachineCloudInitDnsOptions  `tfsdk:"dns"`
-}
-
-type VirtualMachineCloudInitUserOptions struct {
-	Name       types.String   `tfsdk:"name"`
-	Password   types.String   `tfsdk:"password"`
-	PublicKeys []types.String `tfsdk:"public_keys"`
-}
-
-func VMCloudInitToModel(cloudInit *vm.VirtualMachineCloudInit) VirtualMachineCloudInitOptions {
-	m := VirtualMachineCloudInitOptions{}
-
-	if cloudInit.User != nil {
-		m.User = &VirtualMachineCloudInitUserOptions{}
-		if cloudInit.User.Name != nil {
-			m.User.Name = types.StringValue(*cloudInit.User.Name)
-		}
-		if cloudInit.User.Password != nil {
-			m.User.Password = types.StringValue(*cloudInit.User.Password)
-		}
-		if cloudInit.User.PublicKeys != nil {
-			m.User.PublicKeys = []types.String{}
-			for _, key := range cloudInit.User.PublicKeys {
-				m.User.PublicKeys = append(m.User.PublicKeys, types.StringValue(key))
-			}
-		}
-	}
-
-	m.IP = []VirtualMachineCloudInitIpOptions{}
-	for _, ip := range cloudInit.Ip {
-		v4 := &VirtualMachineCloudInitIpConfigOptions{
-			DHCP: types.BoolValue(ip.V4.DHCP),
-		}
-		if ip.V4.Address != nil {
-			v4.Address = types.StringValue(*ip.V4.Address)
-		}
-		if ip.V4.Gateway != nil {
-			v4.Gateway = types.StringValue(*ip.V4.Gateway)
-		}
-		if ip.V4.Netmask != nil {
-			v4.Netmask = types.StringValue(*ip.V4.Netmask)
-		}
-
-		v6 := &VirtualMachineCloudInitIpConfigOptions{
-			DHCP: types.BoolValue(ip.V6.DHCP),
-		}
-		if ip.V6.Address != nil {
-			v6.Address = types.StringValue(*ip.V6.Address)
-		}
-		if ip.V6.Gateway != nil {
-			v6.Gateway = types.StringValue(*ip.V6.Gateway)
-		}
-		if ip.V6.Netmask != nil {
-			v6.Netmask = types.StringValue(*ip.V6.Netmask)
-		}
-		cfg := VirtualMachineCloudInitIpOptions{
-			V4: v4,
-			V6: v6,
-		}
-		m.IP = append(m.IP, cfg)
-	}
-
-	if cloudInit.Dns != nil {
-		m.DNS = &VirtualMachineCloudInitDnsOptions{}
-		if cloudInit.Dns.Nameserver != nil {
-			m.DNS.Nameserver = types.StringValue(*cloudInit.Dns.Nameserver)
-		}
-		if cloudInit.Dns.Domain != nil {
-			m.DNS.Domain = types.StringValue(*cloudInit.Dns.Domain)
-		}
-	}
-
-	return m
-}
-
-type VirtualMachineCloudInitIpOptions struct {
-	V4 *VirtualMachineCloudInitIpConfigOptions `tfsdk:"v4"`
-	V6 *VirtualMachineCloudInitIpConfigOptions `tfsdk:"v6"`
-}
-
-type VirtualMachineCloudInitIpConfigOptions struct {
-	DHCP    types.Bool   `tfsdk:"dhcp"`
-	Address types.String `tfsdk:"address"`
-	Netmask types.String `tfsdk:"netmask"`
-	Gateway types.String `tfsdk:"gateway"`
-}
-
-type VirtualMachineCloudInitDnsOptions struct {
-	Nameserver types.String `tfsdk:"nameserver"`
-	Domain     types.String `tfsdk:"domain"`
 }
 
 type VirtualMachineTerraformTimeouts struct {

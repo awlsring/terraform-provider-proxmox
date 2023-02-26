@@ -31,7 +31,7 @@ func (r *virtualMachineResource) waitForStateChange(ctx context.Context, node st
 }
 
 func (r *virtualMachineResource) startVm(ctx context.Context, node string, id int) error {
-	tflog.Info(ctx, "Starting virtual machine")
+	tflog.Debug(ctx, "Starting virtual machine")
 	err := r.client.StartVirtualMachine(ctx, node, id)
 	if err != nil {
 		return err
@@ -46,7 +46,7 @@ func (r *virtualMachineResource) startVm(ctx context.Context, node string, id in
 }
 
 func (r *virtualMachineResource) stopVm(ctx context.Context, node string, id int) error {
-	tflog.Info(ctx, "Stopping virtual machine")
+	tflog.Debug(ctx, "Stopping virtual machine")
 	err := r.client.StopVirtualMachine(ctx, node, id)
 	if err != nil {
 		return err

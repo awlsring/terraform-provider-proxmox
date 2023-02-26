@@ -419,57 +419,8 @@ var ResourceSchema = schema.Schema{
 			},
 		},
 		"cloud_init": schema.SingleNestedAttribute{
-			Optional: true,
-			Attributes: map[string]schema.Attribute{
-				"user": schema.SingleNestedAttribute{
-					Required: true,
-					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{
-							Required:    true,
-							Description: "The name of the user.",
-						},
-						"password": schema.StringAttribute{
-							Optional:    true,
-							Description: "The password of the user.",
-						},
-						"public_keys": schema.ListAttribute{
-							Optional:    true,
-							Description: "The public ssh keys of the user.",
-							ElementType: types.StringType,
-						},
-					},
-				},
-				"ip": schema.SetNestedAttribute{
-					Optional:   true,
-					CustomType: t.NewCloudInitIpSetType(),
-					NestedObject: schema.NestedAttributeObject{
-						Attributes: map[string]schema.Attribute{
-							"v4": schema.SingleNestedAttribute{
-								Optional:   true,
-								Attributes: t.CloudInitIpSchema,
-							},
-							"v6": schema.SingleNestedAttribute{
-								Optional:   true,
-								Attributes: t.CloudInitIpSchema,
-							},
-						},
-					},
-				},
-				"dns": schema.SingleNestedAttribute{
-					Optional: true,
-
-					Attributes: map[string]schema.Attribute{
-						"nameserver": schema.StringAttribute{
-							Optional:    true,
-							Description: "The nameserver to use for the machine.",
-						},
-						"domain": schema.StringAttribute{
-							Optional:    true,
-							Description: "The domain to use for the machine.",
-						},
-					},
-				},
-			},
+			Optional:   true,
+			Attributes: t.CloudInitAttributes,
 		},
 		"type": schema.StringAttribute{
 			Optional:    true,

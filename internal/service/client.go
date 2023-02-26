@@ -16,11 +16,11 @@ type Proxmox struct {
 }
 
 type ClientConfig struct {
-	Endpoint string
-	Token   string
+	Endpoint   string
+	Token      string
 	SkipVerify bool
-	Username string
-	Password string
+	Username   string
+	Password   string
 }
 
 func New(c ClientConfig) (*Proxmox, error) {
@@ -34,17 +34,15 @@ func New(c ClientConfig) (*Proxmox, error) {
 		Transport: &http.Transport{
 			MaxIdleConns:        10,
 			MaxIdleConnsPerHost: 10,
-			TLSClientConfig:    &tls.Config{InsecureSkipVerify: c.SkipVerify},
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: c.SkipVerify},
 		},
 	}
-	
+
 	if c.Token != "" {
-		fmt.Println("making with token")
 		return newTokenClient(c, cfg)
 	}
 
 	if c.Username != "" && c.Password != "" {
-		fmt.Println("making with basic")
 		return newBasicAuthClient(c, cfg)
 	}
 

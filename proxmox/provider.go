@@ -107,7 +107,7 @@ func (p *ProxmoxProvider) Schema(ctx context.Context, req provider.SchemaRequest
 }
 
 func (p *ProxmoxProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	tflog.Info(ctx, "Configuring Prxoxmox client")
+	tflog.Debug(ctx, "Configuring Prxoxmox client")
 
 	var cfg ProxmoxProviderConfig
 	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
@@ -183,7 +183,7 @@ func (p *ProxmoxProvider) Configure(ctx context.Context, req provider.ConfigureR
 	resp.DataSourceData = service
 	resp.ResourceData = service
 
-	tflog.Info(ctx, "Configured Proxmox client", map[string]any{"success": true})
+	tflog.Debug(ctx, "Configured Proxmox client", map[string]any{"success": true})
 }
 
 func (p *ProxmoxProvider) Resources(ctx context.Context) []func() resource.Resource {
