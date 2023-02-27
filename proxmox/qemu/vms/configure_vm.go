@@ -84,7 +84,7 @@ func (r *virtualMachineResource) configureVm(ctx context.Context, plan *qemu.Vir
 	tflog.Debug(ctx, "configure virtual machine complete")
 
 	tflog.Debug(ctx, "waiting for lock")
-	r.waitForLock(ctx, node, vmId)
+	r.waitForLock(ctx, node, vmId, r.timeouts.Configure)
 	tflog.Debug(ctx, "lock released")
 	return nil
 }

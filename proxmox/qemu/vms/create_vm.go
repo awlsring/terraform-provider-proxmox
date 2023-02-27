@@ -46,7 +46,7 @@ func (r *virtualMachineResource) clone(ctx context.Context, plan *qemu.VirtualMa
 	}
 
 	// wait till clone is complete
-	r.waitForLock(ctx, node, vmId)
+	r.waitForLock(ctx, node, vmId, r.timeouts.Clone)
 
 	tflog.Debug(ctx, "clone virtual machine complete")
 	return nil
@@ -71,19 +71,15 @@ func (r *virtualMachineResource) iso(ctx context.Context, plan *qemu.VirtualMach
 	return nil
 }
 
-func (r *virtualMachineResource) waitForLock(ctx context.Context, node string, vmId int) error {
+func (r *virtualMachineResource) waitForLock(ctx context.Context, node string, vmId int, timeout int64) error {
 	tflog.Debug(ctx, "waiting lock to release...")
-	retries := 0
-	limit := 3
+	deadline := setDeadline(timeout)
 	for {
 		status, err := r.client.GetVirtualMachineStatus(ctx, node, vmId)
 		if err != nil {
 			tflog.Error(ctx, "error: "+err.Error())
-			if retries < limit {
-				retries++
-				tflog.Debug(ctx, fmt.Sprintf("recieved error, retrying time %d of %d", retries, limit))
-			} else {
-				return err
+			if time.Now().After(deadline) {
+				return fmt.Errorf("timeout waiting for lock to release")
 			}
 		} else if !status.HasLock() {
 			break

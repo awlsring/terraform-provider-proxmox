@@ -62,10 +62,9 @@ func (r *virtualMachineResource) stopIfSensitivePropertyChanged(ctx context.Cont
 	return false, nil
 }
 
-func (r *virtualMachineResource) waitForStateChange(ctx context.Context, node string, vmId int, endState proxmox.VirtualMachineStatus) error {
+func (r *virtualMachineResource) waitForStateChange(ctx context.Context, node string, vmId int, timeout int64, endState proxmox.VirtualMachineStatus) error {
 	tflog.Debug(ctx, "waiting for state change...")
-	retries := 0
-	limit := 10
+	deadline := setDeadline(timeout)
 	for {
 		status, err := r.client.GetVirtualMachineStatus(ctx, node, vmId)
 		if err != nil {
@@ -74,8 +73,8 @@ func (r *virtualMachineResource) waitForStateChange(ctx context.Context, node st
 		if status.Status == endState {
 			break
 		}
-		if retries <= limit {
-			retries++
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timeout waiting for state change")
 		}
 		tflog.Debug(ctx, "state is still "+string(status.Status)+", waiting 5 seconds...")
 		time.Sleep(5 * time.Second)
@@ -91,7 +90,7 @@ func (r *virtualMachineResource) startVm(ctx context.Context, node string, id in
 		return err
 	}
 
-	err = r.waitForStateChange(ctx, node, id, proxmox.VIRTUALMACHINESTATUS_RUNNING)
+	err = r.waitForStateChange(ctx, node, id, r.timeouts.Start, proxmox.VIRTUALMACHINESTATUS_RUNNING)
 	if err != nil {
 		return err
 	}
@@ -106,7 +105,7 @@ func (r *virtualMachineResource) stopVm(ctx context.Context, node string, id int
 		return err
 	}
 
-	err = r.waitForStateChange(ctx, node, id, proxmox.VIRTUALMACHINESTATUS_STOPPED)
+	err = r.waitForStateChange(ctx, node, id, r.timeouts.Stop, proxmox.VIRTUALMACHINESTATUS_STOPPED)
 	if err != nil {
 		return err
 	}
@@ -120,11 +119,14 @@ func (r *virtualMachineResource) deleteVm(ctx context.Context, node string, id i
 	if err != nil {
 		return err
 	}
-
+	deadline := setDeadline(r.timeouts.Delete)
 	for {
 		_, err := r.client.GetVirtualMachineStatus(ctx, node, id)
 		if err != nil {
 			break
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timeout waiting for state change")
 		}
 		tflog.Debug(ctx, "VM still exists, waiting 5 seconds...")
 		time.Sleep(5 * time.Second)

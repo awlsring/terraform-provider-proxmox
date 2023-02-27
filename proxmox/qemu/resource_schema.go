@@ -498,9 +498,9 @@ var ResourceSchema = schema.Schema{
 					Optional:    true,
 					Description: "The timeout for cloning the virtual machine.",
 				},
-				"move_disk": schema.Int64Attribute{
+				"configure": schema.Int64Attribute{
 					Optional:    true,
-					Description: "The timeout for moving the virtual machine disk.",
+					Description: "The timeout for configuring the virtual machine.",
 				},
 			},
 		},

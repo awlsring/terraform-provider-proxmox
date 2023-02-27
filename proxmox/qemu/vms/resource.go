@@ -2,7 +2,6 @@ package vms
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
@@ -23,7 +22,8 @@ func Resource() resource.Resource {
 }
 
 type virtualMachineResource struct {
-	client *service.Proxmox
+	client   *service.Proxmox
+	timeouts *VirtualMachineTimeouts
 }
 
 func (r *virtualMachineResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -69,6 +69,7 @@ func (r *virtualMachineResource) Configure(_ context.Context, req resource.Confi
 	}
 
 	r.client = req.ProviderData.(*service.Proxmox)
+	r.timeouts = &defaults
 }
 
 func (r *virtualMachineResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -79,6 +80,7 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	r.timeouts = loadTimeouts(ctx, plan.Timeouts)
 
 	tflog.Debug(ctx, fmt.Sprintf("plan '%v'", plan.CloudInit))
 
@@ -140,10 +142,6 @@ func (r *virtualMachineResource) readModelWithContext(ctx context.Context, node 
 	if err != nil {
 		return nil, err
 	}
-
-	j, _ := json.Marshal(vm)
-	tflog.Debug(ctx, fmt.Sprintf("vm '%v'", string(j)))
-
 	model := qemu.VMToModel(ctx, vm, state)
 
 	if !state.ResourcePool.IsNull() {
@@ -214,6 +212,7 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 
 	node := plan.Node.ValueString()
 	vmId := int(state.ID.ValueInt64())
+	r.timeouts = loadTimeouts(ctx, plan.Timeouts)
 
 	stopped, err := r.stopIfSensitivePropertyChanged(ctx, &state, &plan)
 	if err != nil {
@@ -286,6 +285,7 @@ func (r *virtualMachineResource) Delete(ctx context.Context, req resource.Delete
 
 	node := state.Node.ValueString()
 	vmId := int(state.ID.ValueInt64())
+	r.timeouts = loadTimeouts(ctx, state.Timeouts)
 
 	err := r.stopVm(ctx, node, vmId)
 	if err != nil {

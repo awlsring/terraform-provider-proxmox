@@ -260,14 +260,14 @@ func VMMemoryToModel(memory *vm.VirtualMachineMemory) VirtualMachineMemoryOption
 }
 
 type VirtualMachineTerraformTimeouts struct {
-	Create   types.Int64 `tfsdk:"create"`
-	Delete   types.Int64 `tfsdk:"delete"`
-	Stop     types.Int64 `tfsdk:"stop"`
-	Start    types.Int64 `tfsdk:"start"`
-	Reboot   types.Int64 `tfsdk:"reboot"`
-	Shutdown types.Int64 `tfsdk:"shutdown"`
-	Clone    types.Int64 `tfsdk:"clone"`
-	MoveDisk types.Int64 `tfsdk:"move_disk"`
+	Create    types.Int64 `tfsdk:"create"`
+	Delete    types.Int64 `tfsdk:"delete"`
+	Stop      types.Int64 `tfsdk:"stop"`
+	Start     types.Int64 `tfsdk:"start"`
+	Reboot    types.Int64 `tfsdk:"reboot"`
+	Shutdown  types.Int64 `tfsdk:"shutdown"`
+	Clone     types.Int64 `tfsdk:"clone"`
+	Configure types.Int64 `tfsdk:"configure"`
 }
 
 type VirtualMachineModel struct {
