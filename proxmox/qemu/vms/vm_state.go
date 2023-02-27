@@ -113,3 +113,22 @@ func (r *virtualMachineResource) stopVm(ctx context.Context, node string, id int
 
 	return nil
 }
+
+func (r *virtualMachineResource) deleteVm(ctx context.Context, node string, id int) error {
+	tflog.Debug(ctx, "Deleting virtual machine")
+	err := r.client.DeleteVirtualMachine(ctx, node, id)
+	if err != nil {
+		return err
+	}
+
+	for {
+		_, err := r.client.GetVirtualMachineStatus(ctx, node, id)
+		if err != nil {
+			break
+		}
+		tflog.Debug(ctx, "VM still exists, waiting 5 seconds...")
+		time.Sleep(5 * time.Second)
+	}
+
+	return nil
+}

@@ -93,7 +93,7 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	// // configure
+	// configure
 	tflog.Debug(ctx, "Configuring virtual machine")
 	err = r.configureVm(ctx, &plan)
 	if err != nil {
@@ -284,7 +284,10 @@ func (r *virtualMachineResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 
-	err := r.stopVm(ctx, state.Node.ValueString(), int(state.ID.ValueInt64()))
+	node := state.Node.ValueString()
+	vmId := int(state.ID.ValueInt64())
+
+	err := r.stopVm(ctx, node, vmId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error stopping virtual machine",
@@ -293,8 +296,8 @@ func (r *virtualMachineResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 
-	tflog.Debug(ctx, fmt.Sprintf("Deleting vm: '%s' '%v'", state.Node.ValueString(), state.ID.ValueInt64()))
-	err = r.client.DeleteVirtualMachine(ctx, state.Node.ValueString(), int(state.ID.ValueInt64()))
+	tflog.Debug(ctx, fmt.Sprintf("Deleting vm: '%s' '%v'", node, vmId))
+	err = r.deleteVm(ctx, node, vmId)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting vm",
