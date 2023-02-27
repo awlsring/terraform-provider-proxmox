@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/awlsring/proxmox-go/proxmox"
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -216,8 +215,7 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 	node := plan.Node.ValueString()
 	vmId := int(state.ID.ValueInt64())
 
-	wasRunning := false
-	status, err := r.client.GetVirtualMachineStatus(ctx, node, vmId)
+	stopped, err := r.stopIfSensitivePropertyChanged(ctx, &state, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error getting virtual machine state",
@@ -225,18 +223,7 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 		)
 		return
 	}
-
-	if status.Status == proxmox.VIRTUALMACHINESTATUS_RUNNING {
-		wasRunning = true
-		err = r.stopVm(ctx, node, vmId)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Error stopping virtual machine",
-				"Could not stop virtual machine, unexpected error: "+err.Error(),
-			)
-			return
-		}
-	}
+	tflog.Debug(ctx, fmt.Sprintf("vm was stopped: '%v'", stopped))
 
 	tflog.Debug(ctx, fmt.Sprintf("vm state '%v'", state))
 	tflog.Debug(ctx, fmt.Sprintf("vm plan '%v'", plan))
@@ -270,7 +257,7 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	if wasRunning {
+	if stopped {
 		err = r.startVm(ctx, node, vmId)
 		if err != nil {
 			resp.Diagnostics.AddError(
