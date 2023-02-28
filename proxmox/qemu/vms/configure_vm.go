@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/awlsring/proxmox-go/proxmox"
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/r3labs/diff/v3"
 )
 
 func (r *virtualMachineResource) modifyResourcePool(ctx context.Context, id int, was types.String, is types.String) error {
@@ -47,36 +49,40 @@ func (r *virtualMachineResource) modifyResourcePool(ctx context.Context, id int,
 	return nil
 }
 
-func (r *virtualMachineResource) configureVm(ctx context.Context, plan *qemu.VirtualMachineResourceModel) error {
-	tflog.Debug(ctx, "configure virtual machine method")
-
+func (r *virtualMachineResource) determineVmConfigurations(ctx context.Context, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel) error {
+	tflog.Debug(ctx, "determine virtual machine configurations method")
+	configureRequest, resizeRequests, err := formConfigureRequests(ctx, state, plan)
+	if err != nil {
+		return err
+	}
 	node := plan.Node.ValueString()
 	vmId := int(plan.ID.ValueInt64())
 
-	request := service.ConfigureVirtualMachineInput{
-		Node:              node,
-		VmId:              vmId,
-		Name:              utils.OptionalToPointerString(plan.Name.ValueString()),
-		Description:       utils.OptionalToPointerString(plan.Description.ValueString()),
-		Tags:              utils.ListTypeToStringSlice(plan.Tags),
-		Agent:             FormAgentConfig(plan.Agent),
-		Bios:              FormBIOSConfig(plan.BIOS),
-		CPU:               FormCPUConfig(&plan.CPU),
-		Disks:             FormDiskConfig(ctx, plan.Disks),
-		NetworkInterfaces: FormNetworkInterfaceConfig(plan.NetworkInterfaces),
-		Memory:            FormMemoryConfig(&plan.Memory),
-		CloudInit:         FormCloudInitConfig(ctx, plan.CloudInit),
-		OsType:            FormOSTypeConfig(plan.Type),
-		MachineType:       utils.OptionalToPointerString(plan.MachineType.ValueString()),
-		KVMArguments:      utils.OptionalToPointerString(plan.KVMArguments.ValueString()),
-		KeyboardLayout:    FormKeyboardConfig(plan.KeyboardLayout),
-		StartOnBoot:       plan.StartOnNodeBoot.ValueBool(),
+	info, _ := json.Marshal(configureRequest)
+	tflog.Debug(ctx, "configure virtual machine request: "+string(info))
+	info, _ = json.Marshal(resizeRequests)
+	tflog.Debug(ctx, "resize disk virtual machine request: "+string(info))
+
+	if configureRequest != nil {
+		err = r.configureVm(ctx, node, vmId, configureRequest)
+		if err != nil {
+			return err
+		}
 	}
 
-	info, _ := json.Marshal(request)
-	tflog.Debug(ctx, "configure virtual machine request: "+string(info))
+	for _, resizeRequest := range resizeRequests {
+		err = r.resizeDisk(ctx, node, vmId, &resizeRequest)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
-	err := r.client.ConfigureVirtualMachine(ctx, &request)
+func (r *virtualMachineResource) configureVm(ctx context.Context, node string, vmId int, request *service.ConfigureVirtualMachineInput) error {
+	tflog.Debug(ctx, "configure virtual machine method")
+
+	err := r.client.ConfigureVirtualMachine(ctx, request)
 	if err != nil {
 		tflog.Error(ctx, "configure recieved error: "+err.Error())
 		return err
@@ -87,6 +93,133 @@ func (r *virtualMachineResource) configureVm(ctx context.Context, plan *qemu.Vir
 	r.waitForLock(ctx, node, vmId, r.timeouts.Configure)
 	tflog.Debug(ctx, "lock released")
 	return nil
+}
+
+func (r *virtualMachineResource) resizeDisk(ctx context.Context, node string, vmId int, request *service.ResizeVirtualMachineDiskInput) error {
+	err := r.client.ResizeVirtualMachineDisk(ctx, request)
+	if err != nil {
+		return err
+	}
+
+	tflog.Debug(ctx, "waiting for lock")
+	r.waitForLock(ctx, node, vmId, r.timeouts.Configure)
+	tflog.Debug(ctx, "lock released")
+
+	return nil
+}
+
+func formConfigureRequests(ctx context.Context, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel) (*service.ConfigureVirtualMachineInput, []service.ResizeVirtualMachineDiskInput, error) {
+	node := plan.Node.ValueString()
+	vmId := int(plan.ID.ValueInt64())
+
+	pre := state
+	if state == nil {
+		pre = &qemu.VirtualMachineResourceModel{}
+	}
+
+	diff, err := diff.Diff(*pre, *plan)
+	if err != nil {
+		return nil, nil, err
+	}
+	j, _ := json.Marshal(diff)
+	tflog.Debug(ctx, fmt.Sprintf("diff: %+v", string(j)))
+
+	r := service.ConfigureVirtualMachineInput{
+		Node: node,
+		VmId: vmId,
+	}
+
+	resizeRequests := []service.ResizeVirtualMachineDiskInput{}
+
+	do := false
+	for _, d := range diff {
+		if len(d.Path) == 0 {
+			continue
+		}
+		field := d.Path[0]
+		switch d.Type {
+		case "update":
+			if d.From != d.To {
+				if field == "Disks" {
+					if len(d.Path) <= 4 {
+						continue
+					}
+					if d.Path[3] == "Size" {
+						i, err := strconv.Atoi(d.Path[2])
+						if err != nil {
+							return nil, nil, err
+						}
+						resizeRequests = append(resizeRequests, formResizeRequest(ctx, i, plan))
+					}
+				} else {
+					do = true
+					setField(ctx, field, plan, &r)
+				}
+			}
+		case "create":
+			do = true
+			setField(ctx, field, plan, &r)
+		case "delete":
+			// create some conditional branch to formulate a removal
+			do = true
+			setField(ctx, field, plan, &r)
+		}
+	}
+
+	if do {
+		return &r, resizeRequests, nil
+	}
+	return nil, resizeRequests, nil
+}
+
+func setField(ctx context.Context, f string, m *qemu.VirtualMachineResourceModel, r *service.ConfigureVirtualMachineInput) {
+	switch f {
+	case "Node":
+		r.Node = m.Node.ValueString()
+	case "VmId":
+		r.VmId = int(m.ID.ValueInt64())
+	case "Name":
+		r.Name = utils.OptionalToPointerString(m.Name.ValueString())
+	case "Description":
+		r.Description = utils.OptionalToPointerString(m.Description.ValueString())
+	case "Tags":
+		r.Tags = utils.SetTypeToStringSlice(m.Tags)
+	case "Agent":
+		r.Agent = FormAgentConfig(m.Agent)
+	case "Bios":
+		r.Bios = FormBIOSConfig(m.BIOS)
+	case "CPU":
+		r.CPU = FormCPUConfig(&m.CPU)
+	case "Disks":
+		r.Disks = FormDiskConfig(ctx, m.Disks)
+	case "NetworkInterfaces":
+		r.NetworkInterfaces = FormNetworkInterfaceConfig(m.NetworkInterfaces)
+	case "Memory":
+		r.Memory = FormMemoryConfig(&m.Memory)
+	case "CloudInit":
+		r.CloudInit = FormCloudInitConfig(ctx, m.CloudInit)
+	case "OsType":
+		r.OsType = FormOSTypeConfig(m.Type)
+	case "MachineType":
+		r.MachineType = utils.OptionalToPointerString(m.MachineType.ValueString())
+	case "KVMArguments":
+		r.KVMArguments = utils.OptionalToPointerString(m.KVMArguments.ValueString())
+	case "KeyboardLayout":
+		r.KeyboardLayout = FormKeyboardConfig(m.KeyboardLayout)
+	case "StartOnNodeBoot":
+		r.StartOnBoot = m.StartOnNodeBoot.ValueBool()
+	}
+}
+
+func formResizeRequest(ctx context.Context, elm int, m *qemu.VirtualMachineResourceModel) service.ResizeVirtualMachineDiskInput {
+	d := m.Disks.Disks[elm]
+	disk := fmt.Sprintf("%v%v", d.InterfaceType.ValueString(), d.Position.ValueInt64())
+	return service.ResizeVirtualMachineDiskInput{
+		Node: m.Node.ValueString(),
+		VmId: int(m.ID.ValueInt64()),
+		Disk: disk,
+		Size: utils.GbToBytes(d.Size.ValueInt64()),
+	}
 }
 
 func FormNetworkInterfaceConfig(nic t.VirtualMachineNetworkInterfaceSetValue) []service.ConfigureVirtualMachineNetworkInterfaceOptions {

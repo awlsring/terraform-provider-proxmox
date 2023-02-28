@@ -8,25 +8,27 @@ import (
 )
 
 type VirtualMachineTimeouts struct {
-	Create    int64
-	Delete    int64
-	Stop      int64
-	Start     int64
-	Reboot    int64
-	Shutdown  int64
-	Clone     int64
-	Configure int64
+	Create     int64
+	Delete     int64
+	Stop       int64
+	Start      int64
+	Reboot     int64
+	Shutdown   int64
+	Clone      int64
+	Configure  int64
+	ResizeDisk int64
 }
 
 var defaults = VirtualMachineTimeouts{
-	Create:    600,
-	Delete:    600,
-	Stop:      600,
-	Start:     600,
-	Reboot:    600,
-	Shutdown:  600,
-	Clone:     600,
-	Configure: 600,
+	Create:     600,
+	Delete:     600,
+	Stop:       600,
+	Start:      600,
+	Reboot:     600,
+	Shutdown:   600,
+	Clone:      600,
+	Configure:  600,
+	ResizeDisk: 600,
 }
 
 func loadTimeouts(ctx context.Context, timeouts *qemu.VirtualMachineTerraformTimeouts) *VirtualMachineTimeouts {
@@ -67,6 +69,16 @@ func loadTimeouts(ctx context.Context, timeouts *qemu.VirtualMachineTerraformTim
 
 	if !timeouts.Clone.IsNull() || !timeouts.Clone.IsUnknown() {
 		clone := int64(timeouts.Clone.ValueInt64())
+		t.Clone = clone
+	}
+
+	if !timeouts.Configure.IsNull() || !timeouts.Configure.IsUnknown() {
+		clone := int64(timeouts.Configure.ValueInt64())
+		t.Clone = clone
+	}
+
+	if !timeouts.ResizeDisk.IsNull() || !timeouts.ResizeDisk.IsUnknown() {
+		clone := int64(timeouts.ResizeDisk.ValueInt64())
 		t.Clone = clone
 	}
 

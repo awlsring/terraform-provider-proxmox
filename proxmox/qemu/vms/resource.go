@@ -46,6 +46,8 @@ func (r *virtualMachineResource) ModifyPlan(ctx context.Context, req resource.Mo
 		return
 	}
 
+	changeValidatorDiskSize(ctx, &state, &plan, resp)
+
 	// carry over computed values sets to prevent unnecessary diffs
 	amended := plan
 	amended.ComputedDisks = state.ComputedDisks
@@ -80,9 +82,8 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, fmt.Sprintf("plan '%v'", plan))
 	r.timeouts = loadTimeouts(ctx, plan.Timeouts)
-
-	tflog.Debug(ctx, fmt.Sprintf("plan '%v'", plan.CloudInit))
 
 	// create
 	tflog.Debug(ctx, "Creating virtual machine")
@@ -97,7 +98,7 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 
 	// configure
 	tflog.Debug(ctx, "Configuring virtual machine")
-	err = r.configureVm(ctx, &plan)
+	err = r.determineVmConfigurations(ctx, nil, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error configuring virtual machine",
@@ -228,7 +229,7 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 	tflog.Debug(ctx, fmt.Sprintf("vm plan '%v'", plan))
 
 	tflog.Debug(ctx, "Configuring virtual machine")
-	err = r.configureVm(ctx, &plan)
+	err = r.determineVmConfigurations(ctx, &state, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error configuring virtual machine",

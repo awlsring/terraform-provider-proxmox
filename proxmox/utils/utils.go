@@ -39,7 +39,24 @@ func UnpackListType(l []string) types.List {
 	return t
 }
 
+func UnpackSetType(l []string) types.Set {
+	elements := []attr.Value{}
+	for _, s := range l {
+		elements = append(elements, types.StringValue(s))
+	}
+	t, _ := types.SetValue(types.StringType, elements)
+	return t
+}
+
 func ListTypeToStringSlice(l types.List) []string {
+	var r []string
+	for _, s := range l.Elements() {
+		r = append(r, s.(types.String).ValueString())
+	}
+	return r
+}
+
+func SetTypeToStringSlice(l types.Set) []string {
 	var r []string
 	for _, s := range l.Elements() {
 		r = append(r, s.(types.String).ValueString())
@@ -133,4 +150,8 @@ func BytesToGb(b int64) int64 {
 
 func BytesToMb(b int64) int64 {
 	return b / 1024 / 1024
+}
+
+func GbToBytes(g int64) int64 {
+	return g * 1024 * 1024 * 1024
 }

@@ -14,10 +14,10 @@ import (
 // refator this later to use go routines
 func ExtractDisksFromConfig(cfg *proxmox.VirtualMachineConfigurationSummary) ([]VirtualDisk, error) {
 	virtualDisks := []VirtualDisk{}
-	
+
 	var cfgMap map[string]interface{}
-    inrec, _ := json.Marshal(cfg)
-    json.Unmarshal(inrec, &cfgMap)
+	inrec, _ := json.Marshal(cfg)
+	json.Unmarshal(inrec, &cfgMap)
 
 	virtioDisks, err := loopDiskMap(cfgMap, "virtio", 16)
 	if err != nil {
@@ -59,7 +59,7 @@ func loopDiskMap(m map[string]interface{}, key VirtualDiskType, times int) ([]Vi
 			disk.Position = d
 			disk.Type = key
 			virtualDisks = append(virtualDisks, disk)
-		} 
+		}
 	}
 	return virtualDisks, nil
 }
@@ -124,4 +124,21 @@ func strToBytes(sizeStr string) int64 {
 	default:
 		return size
 	}
+}
+
+func BytesToStr(bytes int64) string {
+	if bytes >= 1024*1024*1024*1024 {
+		return fmt.Sprintf("%dT", bytes/(1024*1024*1024*1024))
+	} else if bytes >= 1024*1024*1024 {
+		return fmt.Sprintf("%dG", bytes/(1024*1024*1024))
+	} else if bytes >= 1024*1024 {
+		return fmt.Sprintf("%dM", bytes/(1024*1024))
+	} else if bytes >= 1024 {
+		return fmt.Sprintf("%dK", bytes/1024)
+	}
+	return fmt.Sprintf("%dB", bytes)
+}
+
+func GigabytesToStr(gb int64) string {
+	return fmt.Sprintf("%dG", gb)
 }

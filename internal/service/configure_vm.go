@@ -11,112 +11,112 @@ import (
 )
 
 type ConfigureVirtualMachineInput struct {
-	Node              string
-	VmId              int
-	Name              *string
-	Tags              []string
-	Description       *string
-	Agent             *ConfigureVirtualMachineAgentOptions
-	Bios              *proxmox.VirtualMachineBios
-	CPU               *ConfigureVirtualMachineCpuOptions
-	Disks             []ConfigureVirtualMachineDiskOptions
-	PCIDevices        []ConfigureVirtualPciDeviceOptions
-	NetworkInterfaces []ConfigureVirtualMachineNetworkInterfaceOptions
-	Memory            *ConfigureVirtualMachineMemoryOptions
-	CloudInit         *ConfigureVirtualMachineCloudInitOptions
-	OsType            *proxmox.VirtualMachineOperatingSystem
-	StartOnBoot       bool
-	MachineType       *string
-	KVMArguments      *string
-	KeyboardLayout    *proxmox.VirtualMachineKeyboard
+	Node              string                                           `json:"node"`
+	VmId              int                                              `json:"vmId"`
+	Name              *string                                          `json:"name,omitempty"`
+	Tags              []string                                         `json:"tags,omitempty"`
+	Description       *string                                          `json:"description,omitempty"`
+	Agent             *ConfigureVirtualMachineAgentOptions             `json:"agent,omitempty"`
+	Bios              *proxmox.VirtualMachineBios                      `json:"bios,omitempty"`
+	CPU               *ConfigureVirtualMachineCpuOptions               `json:"cpu,omitempty"`
+	Disks             []ConfigureVirtualMachineDiskOptions             `json:"disks,omitempty"`
+	PCIDevices        []ConfigureVirtualPciDeviceOptions               `json:"pciDevices,omitempty"`
+	NetworkInterfaces []ConfigureVirtualMachineNetworkInterfaceOptions `json:"networkInterfaces,omitempty"`
+	Memory            *ConfigureVirtualMachineMemoryOptions            `json:"memory,omitempty"`
+	CloudInit         *ConfigureVirtualMachineCloudInitOptions         `json:"cloudInit,omitempty"`
+	OsType            *proxmox.VirtualMachineOperatingSystem           `json:"osType,omitempty"`
+	StartOnBoot       bool                                             `json:"startOnBoot,omitempty"`
+	MachineType       *string                                          `json:"machineType,omitempty"`
+	KVMArguments      *string                                          `json:"kvmArguments,omitempty"`
+	KeyboardLayout    *proxmox.VirtualMachineKeyboard                  `json:"keyboardLayout,omitempty"`
 }
 
 type ConfigureVirtualMachineAgentOptions struct {
-	Enabled bool
-	FsTrim  bool
-	Type    *string
+	Enabled bool    `json:"enabled"`
+	FsTrim  bool    `json:"fsTrim"`
+	Type    *string `json:"type,omitempty"`
 }
 
 type ConfigureVirtualMachineCpuOptions struct {
-	Architecture *string
-	Cores        *int
-	Sockets      *int
-	EmulatedType *string
-	CpuUnits     *int64
+	Architecture *string `json:"architecture,omitempty"`
+	Cores        *int    `json:"cores,omitempty"`
+	Sockets      *int    `json:"sockets,omitempty"`
+	EmulatedType *string `json:"emulatedType,omitempty"`
+	CpuUnits     *int64  `json:"cpuUnits,omitempty"`
 }
 
 type ConfigureVirtualMachineDiskOptions struct {
-	Storage       string
-	FileFormat    *string
-	Size          int
-	UseIOThreads  bool
-	Position      int
-	InterfaceType string
-	SpeedLimits   *ConfigureVirtualMachineDiskSpeedLimitsOptions
-	SSDEmulation  bool
-	Discard       bool
+	Storage       string                                         `json:"storage"`
+	FileFormat    *string                                        `json:"fileFormat,omitempty"`
+	Size          int                                            `json:"size"`
+	UseIOThreads  bool                                           `json:"useIOThreads"`
+	Position      int                                            `json:"position"`
+	InterfaceType string                                         `json:"interfaceType"`
+	SpeedLimits   *ConfigureVirtualMachineDiskSpeedLimitsOptions `json:"speedLimits,omitempty"`
+	SSDEmulation  bool                                           `json:"ssdEmulation"`
+	Discard       bool                                           `json:"discard"`
 }
 
 type ConfigureVirtualMachineDiskSpeedLimitsOptions struct {
-	Read           *int64
-	ReadBurstable  *int64
-	Write          *int64
-	WriteBurstable *int64
+	Read           *int64 `json:"read,omitempty"`
+	ReadBurstable  *int64 `json:"readBurstable,omitempty"`
+	Write          *int64 `json:"write,omitempty"`
+	WriteBurstable *int64 `json:"writeBurstable,omitempty"`
 }
 
 type ConfigureVirtualPciDeviceOptions struct {
-	DeviceName *string
-	DeviceId   *string
-	PCIe       bool
-	Mdev       *string
+	DeviceName *string `json:"deviceName,omitempty"`
+	DeviceId   *string `json:"deviceId,omitempty"`
+	PCIe       bool    `json:"pcie,omitempty"`
+	Mdev       *string `json:"mdev,omitempty"`
 }
 
 type ConfigureVirtualMachineNetworkInterfaceOptions struct {
-	Bridge    string
-	Enabled   bool
-	Firewall  bool
-	MAC       string
-	Model     string
-	RateLimit *int64
-	VLAN      *int
-	MTU       *int64
-	Position  int
+	Bridge    string `json:"bridge"`
+	Enabled   bool   `json:"enabled"`
+	Firewall  bool   `json:"firewall"`
+	MAC       string `json:"mac"`
+	Model     string `json:"model"`
+	RateLimit *int64 `json:"rateLimit,omitempty"`
+	VLAN      *int   `json:"vlan,omitempty"`
+	MTU       *int64 `json:"mtu,omitempty"`
+	Position  int    `json:"position"`
 }
 
 type ConfigureVirtualMachineMemoryOptions struct {
-	Dedicated *int64
-	Shared    *int64
-	Floating  *int64
+	Dedicated *int64 `json:"dedicated,omitempty"`
+	Shared    *int64 `json:"shared,omitempty"`
+	Floating  *int64 `json:"floating,omitempty"`
 }
 
 type ConfigureVirtualMachineCloudInitOptions struct {
-	User *ConfigureVirtualMachineCloudInitUserOptions
-	Ip   []ConfigureVirtualMachineCloudInitIpOptions
-	Dns  *ConfigureVirtualMachineCloudInitDnsOptions
+	User *ConfigureVirtualMachineCloudInitUserOptions `json:"user,omitempty"`
+	Ip   []ConfigureVirtualMachineCloudInitIpOptions  `json:"ip"`
+	Dns  *ConfigureVirtualMachineCloudInitDnsOptions  `json:"dns,omitempty"`
 }
 
 type ConfigureVirtualMachineCloudInitUserOptions struct {
-	Name       *string
-	Password   *string
-	PublicKeys []string
+	Name       *string  `json:"name,omitempty"`
+	Password   *string  `json:"password,omitempty"`
+	PublicKeys []string `json:"publicKeys"`
 }
 
 type ConfigureVirtualMachineCloudInitIpOptions struct {
-	Position int
-	V4       *ConfigureVirtualMachineCloudInitIpConfigOptions
-	V6       *ConfigureVirtualMachineCloudInitIpConfigOptions
+	Position int                                              `json:"position"`
+	V4       *ConfigureVirtualMachineCloudInitIpConfigOptions `json:"v4,omitempty"`
+	V6       *ConfigureVirtualMachineCloudInitIpConfigOptions `json:"v6,omitempty"`
 }
 
 type ConfigureVirtualMachineCloudInitIpConfigOptions struct {
-	DHCP    bool
-	Address *string
-	Gateway *string
-	Netmask *string
+	DHCP    bool    `json:"dhcp"`
+	Address *string `json:"address,omitempty"`
+	Gateway *string `json:"gateway,omitempty"`
+	Netmask *string `json:"netmask,omitempty"`
 }
 
 type ConfigureVirtualMachineCloudInitDnsOptions struct {
-	Nameserver *string
-	Domain     *string
+	Nameserver *string `json:"nameserver,omitempty"`
+	Domain     *string `json:"domain,omitempty"`
 }
 
 func FormAgentString(agent bool, fstrim bool, t *string) *string {

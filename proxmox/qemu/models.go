@@ -17,7 +17,7 @@ type VirtualMachineResourceModel struct {
 	Node                      types.String                             `tfsdk:"node"`
 	Name                      types.String                             `tfsdk:"name"`
 	Description               types.String                             `tfsdk:"description"`
-	Tags                      types.List                               `tfsdk:"tags"`
+	Tags                      types.Set                                `tfsdk:"tags"`
 	Clone                     *VirtualMachineCloneOptions              `tfsdk:"clone"`
 	ISO                       *VirtualMachineIsoOptions                `tfsdk:"iso"`
 	Agent                     *VirtualMachineAgentOptions              `tfsdk:"agent"`
@@ -49,7 +49,7 @@ func VMToModel(ctx context.Context, v *service.VirtualMachine, state *VirtualMac
 	m := VirtualMachineResourceModel{
 		ID:                        types.Int64Value(int64(v.VmId)),
 		Node:                      types.StringValue(v.Node),
-		Tags:                      utils.UnpackListType(v.Tags),
+		Tags:                      utils.UnpackSetType(v.Tags),
 		BIOS:                      types.StringValue(string(v.Bios)),
 		CPU:                       VMCPUToModel(&v.CPU),
 		Memory:                    VMMemoryToModel(&v.Memory),
@@ -260,14 +260,15 @@ func VMMemoryToModel(memory *vm.VirtualMachineMemory) VirtualMachineMemoryOption
 }
 
 type VirtualMachineTerraformTimeouts struct {
-	Create    types.Int64 `tfsdk:"create"`
-	Delete    types.Int64 `tfsdk:"delete"`
-	Stop      types.Int64 `tfsdk:"stop"`
-	Start     types.Int64 `tfsdk:"start"`
-	Reboot    types.Int64 `tfsdk:"reboot"`
-	Shutdown  types.Int64 `tfsdk:"shutdown"`
-	Clone     types.Int64 `tfsdk:"clone"`
-	Configure types.Int64 `tfsdk:"configure"`
+	Create     types.Int64 `tfsdk:"create"`
+	Delete     types.Int64 `tfsdk:"delete"`
+	Stop       types.Int64 `tfsdk:"stop"`
+	Start      types.Int64 `tfsdk:"start"`
+	Reboot     types.Int64 `tfsdk:"reboot"`
+	Shutdown   types.Int64 `tfsdk:"shutdown"`
+	Clone      types.Int64 `tfsdk:"clone"`
+	Configure  types.Int64 `tfsdk:"configure"`
+	ResizeDisk types.Int64 `tfsdk:"resize_disk"`
 }
 
 type VirtualMachineModel struct {

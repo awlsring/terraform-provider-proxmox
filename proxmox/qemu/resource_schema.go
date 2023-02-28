@@ -45,7 +45,7 @@ var ResourceSchema = schema.Schema{
 			Optional:    true,
 			Description: "The CPU description.",
 		},
-		"tags": schema.ListAttribute{
+		"tags": schema.SetAttribute{
 			Optional:    true,
 			Computed:    true,
 			Description: "The tags of the virtual machine.",
@@ -501,6 +501,10 @@ var ResourceSchema = schema.Schema{
 				"configure": schema.Int64Attribute{
 					Optional:    true,
 					Description: "The timeout for configuring the virtual machine.",
+				},
+				"resize_disk": schema.Int64Attribute{
+					Optional:    true,
+					Description: "The timeout for resizing disk the virtual machine.",
 				},
 			},
 		},
