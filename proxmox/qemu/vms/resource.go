@@ -47,7 +47,8 @@ func (r *virtualMachineResource) ModifyPlan(ctx context.Context, req resource.Mo
 	}
 
 	changeValidatorDiskSize(ctx, &state, &plan, resp)
-
+	changeValidatorDiskStorage(ctx, &state, &plan, resp)
+	changeValidatorDiskRemoved(ctx, &state, &plan, resp)
 	// carry over computed values sets to prevent unnecessary diffs
 	amended := plan
 	amended.ComputedDisks = state.ComputedDisks
