@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -9,6 +10,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+func MarshalSafe(i interface{}) string {
+	j, err := json.Marshal(i)
+	if err != nil {
+		return ""
+	}
+	return string(j)
+}
 
 func UnpackId(id string) (string, string, error) {
 	s := strings.Split(id, "/")

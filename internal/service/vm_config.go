@@ -66,3 +66,13 @@ func (c *Proxmox) DescribeVirtualMachine(ctx context.Context, node string, vmid 
 
 	return config, nil
 }
+
+// func (c *Proxmox) DeleteVirtualMachineUnusedDisks(ctx context.Context, node string, vmid int) error {
+// 	configSummary, err := c.GetVirtualMachineConfiguration(ctx, node, vmid)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	// if configSummary.
+
+// }

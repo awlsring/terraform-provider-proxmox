@@ -15,6 +15,7 @@ type ConfigureVirtualMachineInput struct {
 	VmId              int                                              `json:"vmId"`
 	Name              *string                                          `json:"name,omitempty"`
 	Tags              []string                                         `json:"tags,omitempty"`
+	Delete            []string                                         `json:"delete,omitempty"`
 	Description       *string                                          `json:"description,omitempty"`
 	Agent             *ConfigureVirtualMachineAgentOptions             `json:"agent,omitempty"`
 	Bios              *proxmox.VirtualMachineBios                      `json:"bios,omitempty"`
@@ -282,6 +283,10 @@ func (c *Proxmox) ConfigureVirtualMachine(ctx context.Context, input *ConfigureV
 	if input.StartOnBoot {
 		onboot := float32(1)
 		content.Onboot = &onboot
+	}
+
+	if len(input.Delete) > 0 {
+		content.Delete = SliceToStringCommaListPtr(input.Delete)
 	}
 
 	for _, d := range input.Disks {

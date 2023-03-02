@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/awlsring/proxmox-go/proxmox"
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
@@ -51,27 +52,34 @@ func (r *virtualMachineResource) modifyResourcePool(ctx context.Context, id int,
 
 func (r *virtualMachineResource) determineVmConfigurations(ctx context.Context, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel) error {
 	tflog.Debug(ctx, "determine virtual machine configurations method")
-	configureRequest, resizeRequests, err := formConfigureRequests(ctx, state, plan)
-	if err != nil {
-		return err
-	}
+	updates, deletes, resizes := formConfigureRequests(ctx, state, plan)
+
 	node := plan.Node.ValueString()
 	vmId := int(plan.ID.ValueInt64())
 
-	info, _ := json.Marshal(configureRequest)
-	tflog.Debug(ctx, "configure virtual machine request: "+string(info))
-	info, _ = json.Marshal(resizeRequests)
-	tflog.Debug(ctx, "resize disk virtual machine request: "+string(info))
+	tflog.Debug(ctx, "configure virtual machine updates request: "+utils.MarshalSafe(updates))
+	tflog.Debug(ctx, "configure virtual machine deletes request: "+utils.MarshalSafe(deletes))
+	tflog.Debug(ctx, "resize disk virtual machine request: "+utils.MarshalSafe(resizes))
 
-	if configureRequest != nil {
-		err = r.configureVm(ctx, node, vmId, configureRequest)
+	if deletes != nil {
+		tflog.Debug(ctx, "deletes not nil, running configure vm with delete method")
+		err := r.configureVm(ctx, node, vmId, deletes)
 		if err != nil {
 			return err
 		}
 	}
 
-	for _, resizeRequest := range resizeRequests {
-		err = r.resizeDisk(ctx, node, vmId, &resizeRequest)
+	if updates != nil {
+		tflog.Debug(ctx, "updates not nil, running configure vm with updated properties")
+		err := r.configureVm(ctx, node, vmId, updates)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, resizeRequest := range resizes {
+		tflog.Debug(ctx, fmt.Sprintf("running resize disk method on %s", resizeRequest.Disk))
+		err := r.resizeDisk(ctx, node, vmId, &resizeRequest)
 		if err != nil {
 			return err
 		}
@@ -108,7 +116,246 @@ func (r *virtualMachineResource) resizeDisk(ctx context.Context, node string, vm
 	return nil
 }
 
-func formConfigureRequests(ctx context.Context, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel) (*service.ConfigureVirtualMachineInput, []service.ResizeVirtualMachineDiskInput, error) {
+func formConfigureRequests(
+	ctx context.Context,
+	state *qemu.VirtualMachineResourceModel,
+	plan *qemu.VirtualMachineResourceModel,
+) (
+	*service.ConfigureVirtualMachineInput,
+	*service.ConfigureVirtualMachineInput,
+	[]service.ResizeVirtualMachineDiskInput,
+) {
+	node := plan.Node.ValueString()
+	vmId := int(plan.ID.ValueInt64())
+
+	updates := determineUpdates(ctx, node, vmId, state, plan)
+	deletes := determineDeletes(ctx, node, vmId, state, plan)
+	resizes := determineDiskResizes(ctx, node, vmId, state, plan)
+
+	return updates, deletes, resizes
+
+}
+
+func determineDiskResizes(ctx context.Context, node string, vmId int, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel) []service.ResizeVirtualMachineDiskInput {
+	tflog.Debug(ctx, "determine disk resizes method")
+	var resizes []service.ResizeVirtualMachineDiskInput
+
+	for _, planDisk := range plan.Disks.Disks {
+		for _, stateDisk := range state.Disks.Disks {
+			if planDisk.Position.ValueInt64() == stateDisk.Position.ValueInt64() && planDisk.InterfaceType.ValueString() == stateDisk.InterfaceType.ValueString() && planDisk.Storage.ValueString() == stateDisk.Storage.ValueString() {
+				if planDisk.Size.ValueInt64() != stateDisk.Size.ValueInt64() {
+					disk := fmt.Sprintf("%s%v", planDisk.InterfaceType.ValueString(), planDisk.Position.ValueInt64())
+					resizes = append(resizes, service.ResizeVirtualMachineDiskInput{
+						Node: node,
+						VmId: vmId,
+						Disk: disk,
+						Size: utils.GbToBytes(planDisk.Size.ValueInt64()),
+					})
+				}
+			}
+		}
+	}
+
+	return resizes
+}
+
+func determineUpdates(ctx context.Context, node string, vmId int, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel) *service.ConfigureVirtualMachineInput {
+	tflog.Debug(ctx, "determine configuration updates method")
+	request := &service.ConfigureVirtualMachineInput{
+		Node:   node,
+		VmId:   vmId,
+		Memory: FormMemoryConfig(&plan.Memory),
+		CPU:    FormCPUConfig(&plan.CPU),
+	}
+
+	if state.Name.ValueString() != plan.Name.ValueString() {
+		request.Name = utils.OptionalToPointerString(plan.Name.ValueString())
+	}
+
+	if state.Description.ValueString() != plan.Description.ValueString() {
+		request.Description = utils.OptionalToPointerString(plan.Description.ValueString())
+	}
+
+	if !plan.Tags.IsNull() {
+		request.Tags = utils.SetTypeToStringSlice(plan.Tags)
+	}
+
+	newDisks := determineAddedDisks(ctx, state.Disks.Disks, plan.Disks.Disks)
+	if len(newDisks) > 0 {
+		request.Disks = FormDiskConfig(ctx, newDisks)
+	}
+
+	newNics := determineAddedNetworkInterfaces(ctx, state.NetworkInterfaces.Nics, plan.NetworkInterfaces.Nics)
+	if len(newNics) > 0 {
+		request.NetworkInterfaces = FormNetworkInterfaceConfig(newNics)
+	}
+
+	if plan.Agent != nil {
+		request.Agent = FormAgentConfig(plan.Agent)
+	}
+
+	if !plan.BIOS.IsNull() {
+		request.Bios = FormBIOSConfig(plan.BIOS)
+	}
+
+	if plan.CloudInit != nil {
+		request.CloudInit = FormCloudInitConfig(ctx, plan.CloudInit)
+	}
+
+	if !plan.Type.IsNull() {
+		request.OsType = FormOSTypeConfig(plan.Type)
+	}
+
+	if !plan.MachineType.IsNull() {
+		request.MachineType = utils.OptionalToPointerString(plan.MachineType.ValueString())
+	}
+
+	if !plan.KVMArguments.IsNull() {
+		request.KVMArguments = utils.OptionalToPointerString(plan.KVMArguments.ValueString())
+	}
+
+	if plan.StartOnNodeBoot.ValueBool() {
+		request.StartOnBoot = plan.StartOnNodeBoot.ValueBool()
+	}
+
+	return request
+}
+
+func determineDeletes(ctx context.Context, node string, vmId int, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel) *service.ConfigureVirtualMachineInput {
+	tflog.Debug(ctx, "determine configuration deletes method")
+	fieldsToDelete := []string{}
+
+	if !state.Name.IsNull() && (plan.Name.IsNull() || plan.Name.IsUnknown()) {
+		tflog.Debug(ctx, "name is null, will delete")
+		fieldsToDelete = append(fieldsToDelete, "name")
+	}
+
+	if !state.Description.IsNull() && plan.Description.IsNull() {
+		tflog.Debug(ctx, "description is null, will delete")
+		fieldsToDelete = append(fieldsToDelete, "description")
+	}
+
+	if !state.Tags.IsNull() && plan.Tags.IsNull() {
+		tflog.Debug(ctx, "tags are null, will delete")
+		fieldsToDelete = append(fieldsToDelete, "tags")
+	}
+
+	removedDisks := determineRemoveDisks(ctx, state.Disks.Disks, plan.Disks.Disks)
+	if len(removedDisks) > 0 {
+		fieldsToDelete = append(fieldsToDelete, removedDisks...)
+	}
+
+	removedNics := determineRemoveNetworkInterfaces(ctx, state.NetworkInterfaces.Nics, plan.NetworkInterfaces.Nics)
+	if len(removedNics) > 0 {
+		fieldsToDelete = append(fieldsToDelete, removedNics...)
+	}
+
+	if len(fieldsToDelete) != 0 {
+		return &service.ConfigureVirtualMachineInput{
+			Node:   node,
+			VmId:   vmId,
+			Delete: fieldsToDelete,
+		}
+	}
+	return nil
+}
+
+func flattenNetworkInterfaces(ctx context.Context, state []t.VirtualMachineNetworkInterfaceModel, plan []t.VirtualMachineNetworkInterfaceModel) ([]string, []string) {
+	stateNics := []string{}
+	planNics := []string{}
+
+	for _, nic := range state {
+		stateNics = append(stateNics, fmt.Sprintf("net%v", nic.Position.ValueInt64()))
+	}
+
+	for _, nic := range plan {
+		planNics = append(planNics, fmt.Sprintf("net%v", nic.Position.ValueInt64()))
+	}
+
+	return stateNics, planNics
+}
+
+func determineRemoveNetworkInterfaces(ctx context.Context, state []t.VirtualMachineNetworkInterfaceModel, plan []t.VirtualMachineNetworkInterfaceModel) []string {
+	stateNics, planNics := flattenNetworkInterfaces(ctx, state, plan)
+
+	removeNics := []string{}
+	for _, nic := range stateNics {
+		if !utils.ListContains(planNics, nic) {
+			removeNics = append(removeNics, nic)
+		}
+	}
+
+	return removeNics
+}
+
+func determineAddedNetworkInterfaces(ctx context.Context, state []t.VirtualMachineNetworkInterfaceModel, plan []t.VirtualMachineNetworkInterfaceModel) []t.VirtualMachineNetworkInterfaceModel {
+	stateNics, planNics := flattenNetworkInterfaces(ctx, state, plan)
+
+	addNics := []t.VirtualMachineNetworkInterfaceModel{}
+	for _, nic := range planNics {
+		if !utils.ListContains(stateNics, nic) {
+			for _, n := range plan {
+				if fmt.Sprintf("net%v", n.Position.ValueInt64()) == nic {
+					addNics = append(addNics, n)
+				}
+			}
+		}
+	}
+
+	return addNics
+}
+
+func determineRemoveDisks(ctx context.Context, state []t.VirtualMachineDiskModel, plan []t.VirtualMachineDiskModel) []string {
+	stateDisks, planDisks := flattenDisks(ctx, state, plan)
+	tflog.Debug(ctx, fmt.Sprintf("stateDisks: %v", stateDisks))
+	tflog.Debug(ctx, fmt.Sprintf("planDisks: %v", planDisks))
+
+	removeDisks := []string{}
+	for _, disk := range stateDisks {
+		if !utils.ListContains(planDisks, disk) {
+			tflog.Debug(ctx, fmt.Sprintf("disk to remove: %s", disk))
+			d := strings.Split(disk, ":")[0]
+			removeDisks = append(removeDisks, d)
+		}
+	}
+
+	return removeDisks
+}
+
+func flattenDisks(ctx context.Context, state []t.VirtualMachineDiskModel, plan []t.VirtualMachineDiskModel) ([]string, []string) {
+	stateDisks := []string{}
+	planDisks := []string{}
+
+	for _, disk := range state {
+		stateDisks = append(stateDisks, fmt.Sprintf("%s%v:%s", disk.InterfaceType.ValueString(), disk.Position.ValueInt64(), disk.Storage.ValueString()))
+	}
+
+	for _, disk := range plan {
+		planDisks = append(planDisks, fmt.Sprintf("%s%v:%s", disk.InterfaceType.ValueString(), disk.Position.ValueInt64(), disk.Storage.ValueString()))
+	}
+
+	return stateDisks, planDisks
+}
+
+func determineAddedDisks(ctx context.Context, state []t.VirtualMachineDiskModel, plan []t.VirtualMachineDiskModel) []t.VirtualMachineDiskModel {
+	stateDisks, planDisks := flattenDisks(ctx, state, plan)
+
+	addDisks := []t.VirtualMachineDiskModel{}
+	for _, disk := range planDisks {
+		if !utils.ListContains(stateDisks, disk) {
+			d := strings.Split(disk, ":")[0]
+			for _, pd := range plan {
+				if fmt.Sprintf("%s%v", pd.InterfaceType.ValueString(), pd.Position.ValueInt64()) == d {
+					addDisks = append(addDisks, pd)
+				}
+			}
+		}
+	}
+
+	return addDisks
+}
+
+func formConfigureRequestsOld(ctx context.Context, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel) (*service.ConfigureVirtualMachineInput, []service.ResizeVirtualMachineDiskInput, error) {
 	node := plan.Node.ValueString()
 	vmId := int(plan.ID.ValueInt64())
 
@@ -191,9 +438,9 @@ func setField(ctx context.Context, f string, m *qemu.VirtualMachineResourceModel
 	case "CPU":
 		r.CPU = FormCPUConfig(&m.CPU)
 	case "Disks":
-		r.Disks = FormDiskConfig(ctx, m.Disks)
+		r.Disks = FormDiskConfig(ctx, m.Disks.Disks)
 	case "NetworkInterfaces":
-		r.NetworkInterfaces = FormNetworkInterfaceConfig(m.NetworkInterfaces)
+		r.NetworkInterfaces = FormNetworkInterfaceConfig(m.NetworkInterfaces.Nics)
 	case "Memory":
 		r.Memory = FormMemoryConfig(&m.Memory)
 	case "CloudInit":
@@ -222,9 +469,9 @@ func formResizeRequest(ctx context.Context, elm int, m *qemu.VirtualMachineResou
 	}
 }
 
-func FormNetworkInterfaceConfig(nic t.VirtualMachineNetworkInterfaceSetValue) []service.ConfigureVirtualMachineNetworkInterfaceOptions {
-	n := make([]service.ConfigureVirtualMachineNetworkInterfaceOptions, len(nic.Nics))
-	for i, v := range nic.Nics {
+func FormNetworkInterfaceConfig(nics []t.VirtualMachineNetworkInterfaceModel) []service.ConfigureVirtualMachineNetworkInterfaceOptions {
+	n := make([]service.ConfigureVirtualMachineNetworkInterfaceOptions, len(nics))
+	for i, v := range nics {
 		nconfig := service.ConfigureVirtualMachineNetworkInterfaceOptions{
 			Bridge:    v.Bridge.ValueString(),
 			Enabled:   v.Enabled.ValueBool(),
@@ -241,11 +488,11 @@ func FormNetworkInterfaceConfig(nic t.VirtualMachineNetworkInterfaceSetValue) []
 	return n
 }
 
-func FormDiskConfig(ctx context.Context, disks t.VirtualMachineDiskSetValue) []service.ConfigureVirtualMachineDiskOptions {
+func FormDiskConfig(ctx context.Context, disks []t.VirtualMachineDiskModel) []service.ConfigureVirtualMachineDiskOptions {
 	tflog.Debug(ctx, "Entered form disk config")
-	d := make([]service.ConfigureVirtualMachineDiskOptions, len(disks.Disks))
-	tflog.Debug(ctx, fmt.Sprintf("Disks to configure: %v", len(disks.Disks)))
-	for i, v := range disks.Disks {
+	d := make([]service.ConfigureVirtualMachineDiskOptions, len(disks))
+	tflog.Debug(ctx, fmt.Sprintf("Disks to configure: %v", len(disks)))
+	for i, v := range disks {
 		dconfig := service.ConfigureVirtualMachineDiskOptions{
 			Storage:       v.Storage.ValueString(),
 			FileFormat:    utils.OptionalToPointerString(v.FileFormat.ValueString()),
