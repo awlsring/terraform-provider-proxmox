@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/awlsring/proxmox-go/proxmox"
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -44,6 +45,21 @@ func (r *virtualMachineResource) ModifyPlan(ctx context.Context, req resource.Mo
 	if diags.HasError() {
 		tflog.Debug(ctx, "Plan is create, skipping")
 		return
+	}
+
+	node := plan.Node.ValueString()
+	vmId := int(state.ID.ValueInt64())
+
+	status, err := r.client.GetVirtualMachineStatus(ctx, node, vmId)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading virtual machine",
+			"Could not read virtual machine, unexpected error: "+err.Error(),
+		)
+		return
+	}
+	if status.Status != proxmox.VIRTUALMACHINESTATUS_RUNNING {
+		powerOffValidator(ctx, r.client, &state, &plan, resp)
 	}
 
 	changeValidatorDiskSize(ctx, &state, &plan, resp)

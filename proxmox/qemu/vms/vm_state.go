@@ -13,15 +13,33 @@ import (
 )
 
 var stateSensitiveProperties = []string{
-	"bios",
-	"cpu",
-	"memory",
-	"disks",
-	"network_interfaces",
-	"pci_devices",
-	"cloud_init",
-	"machine_type",
-	"kvm_agruments",
+	"BIOS",
+	"CPU",
+	"Memory",
+	"Disks",
+	"NetworkInterfaces",
+	"PCIDevices",
+	"CloudInit",
+	"MachineType",
+	"KVMArguments",
+}
+
+func isSensitivePropertyChanged(ctx context.Context, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel) (bool, error) {
+	diff, err := diff.Diff(state, plan)
+	if err != nil {
+		tflog.Debug(ctx, "Error determining running state, defaulting to running")
+		return false, nil
+	}
+
+	for _, d := range diff {
+		field := d.Path[0]
+		tflog.Debug(ctx, fmt.Sprintf("Checking property '%v'", field))
+		if utils.ListContains(stateSensitiveProperties, field) {
+			tflog.Debug(ctx, fmt.Sprintf("Property '%v' is state sensitive", field))
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (r *virtualMachineResource) stopIfSensitivePropertyChanged(ctx context.Context, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel) (bool, error) {
@@ -37,27 +55,20 @@ func (r *virtualMachineResource) stopIfSensitivePropertyChanged(ctx context.Cont
 		running = true
 	}
 
-	diff, err := diff.Diff(state, plan)
+	isSensitive, err := isSensitivePropertyChanged(ctx, state, plan)
 	if err != nil {
-		tflog.Debug(ctx, "Error determining running state, defaulting to running")
-		return false, nil
+		return false, err
 	}
 
-	for _, d := range diff {
-		field := d.Path[0]
-		if utils.ListContains(stateSensitiveProperties, field) {
-			tflog.Debug(ctx, fmt.Sprintf("Property '%v' is state sensitive, stopping VM", field))
-			if running {
-				err = r.stopVm(ctx, node, vmId)
-				if err != nil {
-					return false, err
-				}
-				return true, nil
-			} else {
-				return false, nil
+	if isSensitive {
+		if running {
+			tflog.Debug(ctx, "Property is state sensitive, stopping VM")
+			err = r.stopVm(ctx, node, vmId)
+			if err != nil {
+				return false, err
 			}
+			return true, nil
 		}
-
 	}
 	return false, nil
 }

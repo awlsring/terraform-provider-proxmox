@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -71,5 +72,16 @@ func changeValidatorDiskRemoved(_ context.Context, state *qemu.VirtualMachineRes
 	}
 	if len(removedDisks) > 0 {
 		resp.Diagnostics.AddWarning("Detected disk(s) removal", fmt.Sprintf("Detected removal of disk(s) %v. This will result in the disk(s) being deleted.", removedDisksName))
+	}
+}
+
+func powerOffValidator(ctx context.Context, client *service.Proxmox, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel, resp *resource.ModifyPlanResponse) {
+	isSensitive, err := isSensitivePropertyChanged(ctx, state, plan)
+	if err != nil {
+		resp.Diagnostics.AddError("Error checking if sensitive property changed", err.Error())
+		return
+	}
+	if isSensitive {
+		resp.Diagnostics.AddWarning("Sensitive property changed", "Sensitive property changed. VM will be powered off to apply changes.")
 	}
 }
