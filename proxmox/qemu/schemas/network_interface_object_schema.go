@@ -1,10 +1,11 @@
-package qemu
+package schemas
 
 import (
 	"regexp"
 
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/defaults"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
@@ -84,6 +85,51 @@ var NetworkInterfaceObjectSchema = schema.NestedAttributeObject{
 			Description: "The VLAN tag of the network interface.",
 		},
 		"mtu": schema.Int64Attribute{
+			Optional:    true,
+			Description: "The MTU of the network interface. Only valid for virtio.",
+		},
+	},
+}
+
+var NetworkInterfaceObjectDataSourceSchema = dschema.NestedAttributeObject{
+	Attributes: map[string]dschema.Attribute{
+		"bridge": dschema.StringAttribute{
+			Computed:    true,
+			Description: "The bridge the network interface is on.",
+		},
+		"enabled": dschema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "Whether the network interface is enabled.",
+		},
+		"use_firewall": dschema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "Whether the firewall for the network interface is enabled.",
+		},
+		"mac_address": dschema.StringAttribute{
+			Computed:    true,
+			Optional:    true,
+			Description: "The MAC address of the network interface.",
+		},
+		"model": dschema.StringAttribute{
+			Computed:    true,
+			Optional:    true,
+			Description: "The model of the network interface.",
+		},
+		"rate_limit": dschema.Int64Attribute{
+			Optional:    true,
+			Description: "The rate limit of the network interface in megabytes per second.",
+		},
+		"position": dschema.Int64Attribute{
+			Computed:    true,
+			Description: "The position of the network interface in the VM as an int. Used to determine the interface name (net0, net1, etc).",
+		},
+		"vlan": dschema.Int64Attribute{
+			Optional:    true,
+			Description: "The VLAN tag of the network interface.",
+		},
+		"mtu": dschema.Int64Attribute{
 			Optional:    true,
 			Description: "The MTU of the network interface. Only valid for virtio.",
 		},

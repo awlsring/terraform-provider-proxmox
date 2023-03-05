@@ -6,9 +6,11 @@ import (
 
 	"github.com/awlsring/proxmox-go/proxmox"
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/schemas"
+	vt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms/types"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -33,14 +35,14 @@ func (r *virtualMachineResource) Metadata(_ context.Context, req resource.Metada
 
 func (r *virtualMachineResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	tflog.Debug(ctx, "ModifyPlan virtual machine method")
-	var plan qemu.VirtualMachineResourceModel
+	var plan vt.VirtualMachineResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	if diags.HasError() {
 		tflog.Debug(ctx, "Plan is delete, skipping")
 		return
 	}
 
-	var state qemu.VirtualMachineResourceModel
+	var state vt.VirtualMachineResourceModel
 	diags = req.State.Get(ctx, &state)
 	if diags.HasError() {
 		tflog.Debug(ctx, "Plan is create, skipping")
@@ -79,7 +81,7 @@ func (r *virtualMachineResource) ModifyPlan(ctx context.Context, req resource.Mo
 }
 
 func (r *virtualMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = qemu.ResourceSchema
+	resp.Schema = schemas.ResourceSchema
 }
 
 func (r *virtualMachineResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
@@ -88,12 +90,12 @@ func (r *virtualMachineResource) Configure(_ context.Context, req resource.Confi
 	}
 
 	r.client = req.ProviderData.(*service.Proxmox)
-	r.timeouts = &defaults
+	r.timeouts = &timeoutDefaults
 }
 
 func (r *virtualMachineResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Debug(ctx, "Create virtual machine method")
-	var plan qemu.VirtualMachineResourceModel
+	var plan vt.VirtualMachineResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -155,12 +157,12 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 	}
 }
 
-func (r *virtualMachineResource) readModelWithContext(ctx context.Context, node string, id int, state *qemu.VirtualMachineResourceModel) (*qemu.VirtualMachineResourceModel, error) {
+func (r *virtualMachineResource) readModelWithContext(ctx context.Context, node string, id int, state *vt.VirtualMachineResourceModel) (*vt.VirtualMachineResourceModel, error) {
 	vm, err := r.client.DescribeVirtualMachine(ctx, node, id)
 	if err != nil {
 		return nil, err
 	}
-	model := qemu.VMToModel(ctx, vm, state)
+	model := vt.VMToResourceModel(ctx, vm, state)
 
 	if !state.ResourcePool.IsNull() {
 		tflog.Debug(ctx, "Determining resource pool")
@@ -186,7 +188,7 @@ func (r *virtualMachineResource) readModelWithContext(ctx context.Context, node 
 
 func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	tflog.Debug(ctx, "Read virtual machine method")
-	var state qemu.VirtualMachineResourceModel
+	var state vt.VirtualMachineResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -214,14 +216,14 @@ func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequ
 
 func (r *virtualMachineResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	tflog.Debug(ctx, "Update virtual machine method")
-	var plan qemu.VirtualMachineResourceModel
+	var plan vt.VirtualMachineResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	var state qemu.VirtualMachineResourceModel
+	var state vt.VirtualMachineResourceModel
 	diags = req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -294,7 +296,7 @@ func (r *virtualMachineResource) Update(ctx context.Context, req resource.Update
 
 func (r *virtualMachineResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	tflog.Debug(ctx, "Delete virtual machine method")
-	var state qemu.VirtualMachineResourceModel
+	var state vt.VirtualMachineResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {

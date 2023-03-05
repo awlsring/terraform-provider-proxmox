@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/awlsring/proxmox-go/proxmox"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
+	vt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms/types"
+
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/r3labs/diff/v3"
@@ -24,7 +25,7 @@ var stateSensitiveProperties = []string{
 	"KVMArguments",
 }
 
-func isSensitivePropertyChanged(ctx context.Context, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel) (bool, error) {
+func isSensitivePropertyChanged(ctx context.Context, state *vt.VirtualMachineResourceModel, plan *vt.VirtualMachineResourceModel) (bool, error) {
 	diff, err := diff.Diff(state, plan)
 	if err != nil {
 		tflog.Debug(ctx, "Error determining running state, defaulting to running")
@@ -42,7 +43,7 @@ func isSensitivePropertyChanged(ctx context.Context, state *qemu.VirtualMachineR
 	return false, nil
 }
 
-func (r *virtualMachineResource) stopIfSensitivePropertyChanged(ctx context.Context, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel) (bool, error) {
+func (r *virtualMachineResource) stopIfSensitivePropertyChanged(ctx context.Context, state *vt.VirtualMachineResourceModel, plan *vt.VirtualMachineResourceModel) (bool, error) {
 	node := state.Node.ValueString()
 	vmId := int(state.ID.ValueInt64())
 

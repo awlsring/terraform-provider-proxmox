@@ -28,6 +28,25 @@ type VirtualMachine struct {
 	KeyboardLayout    *proxmox.VirtualMachineKeyboard
 }
 
+func (c *Proxmox) DescribeVirtualMachines(ctx context.Context, node string) ([]*VirtualMachine, error) {
+	vms, err := c.ListVirtualMachines(ctx, node)
+	if err != nil {
+		panic(err)
+	}
+
+	var vmList []*VirtualMachine
+	for _, vm := range vms {
+		id := int(vm.Vmid)
+		cf, err := c.DescribeVirtualMachine(ctx, node, id)
+		if err != nil {
+			return nil, err
+		}
+		vmList = append(vmList, cf)
+	}
+
+	return vmList, nil
+}
+
 func (c *Proxmox) DescribeVirtualMachine(ctx context.Context, node string, vmid int) (*VirtualMachine, error) {
 	configSummary, err := c.GetVirtualMachineConfiguration(ctx, node, vmid)
 	if err != nil {
@@ -66,13 +85,3 @@ func (c *Proxmox) DescribeVirtualMachine(ctx context.Context, node string, vmid 
 
 	return config, nil
 }
-
-// func (c *Proxmox) DeleteVirtualMachineUnusedDisks(ctx context.Context, node string, vmid int) error {
-// 	configSummary, err := c.GetVirtualMachineConfiguration(ctx, node, vmid)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// if configSummary.
-
-// }

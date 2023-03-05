@@ -49,11 +49,13 @@ type VirtualMachineDiskSetType struct {
 func (c VirtualMachineDiskSetType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
 	val, err := c.SetType.ValueFromTerraform(ctx, in)
 	if err != nil {
+		tflog.Error(ctx, fmt.Sprintf("error converting disk to terraform value: %v", err))
 		return nil, err
 	}
 
 	set := val.(types.Set)
 
+	tflog.Debug(ctx, "creating disk set")
 	disks := []VirtualMachineDiskModel{}
 	for _, disk := range set.Elements() {
 		var v VirtualMachineDiskModel
@@ -64,6 +66,7 @@ func (c VirtualMachineDiskSetType) ValueFromTerraform(ctx context.Context, in tf
 		t.As(ctx, &v, basetypes.ObjectAsOptions{})
 		disks = append(disks, v)
 	}
+	tflog.Debug(ctx, fmt.Sprintf("disks: %v", disks))
 
 	return VirtualMachineDiskSetValue{
 		val.(types.Set),
@@ -79,7 +82,7 @@ type VirtualMachineDiskSetValue struct {
 func VirtualMachineDiskSetValueFrom(ctx context.Context, disks []VirtualMachineDiskModel) VirtualMachineDiskSetValue {
 	l, diags := types.SetValueFrom(ctx, VirtualMachineDisk, disks)
 	if diags.HasError() {
-		tflog.Debug(ctx, fmt.Sprintf("diags: %v", diags))
+		tflog.Error(ctx, fmt.Sprintf("Error converting Model to VirtualMachineDiskSetValue: %v", diags))
 	}
 
 	if len(disks) == 0 {
@@ -90,6 +93,22 @@ func VirtualMachineDiskSetValueFrom(ctx context.Context, disks []VirtualMachineD
 		l,
 		disks,
 	}
+}
+
+func (d VirtualMachineDiskSetType) Equal(o attr.Type) bool {
+	if d.ElemType == nil {
+		return false
+	}
+
+	other, ok := o.(VirtualMachineDiskSetType)
+	if !ok {
+		other, ok := o.(types.SetType)
+		if !ok {
+			return false
+		}
+		return d.ElemType.Equal(other.ElemType)
+	}
+	return d.ElemType.Equal(other.ElemType)
 }
 
 type VirtualMachineDiskModel struct {

@@ -61,6 +61,22 @@ func (c VirtualMachinePCIDeviceSetType) ValueFromTerraform(ctx context.Context, 
 	}, err
 }
 
+func (d VirtualMachinePCIDeviceSetType) Equal(o attr.Type) bool {
+	if d.ElemType == nil {
+		return false
+	}
+
+	other, ok := o.(VirtualMachinePCIDeviceSetType)
+	if !ok {
+		other, ok := o.(types.SetType)
+		if !ok {
+			return false
+		}
+		return d.ElemType.Equal(other.ElemType)
+	}
+	return d.ElemType.Equal(other.ElemType)
+}
+
 type VirtualMachinePCIDeviceSetValue struct {
 	types.Set
 	PCIDevices []VirtualMachinePCIDeviceModel

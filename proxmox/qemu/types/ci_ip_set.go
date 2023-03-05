@@ -7,6 +7,7 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/internal/service/vm"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/attr/xattr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -18,6 +19,7 @@ import (
 
 var (
 	_ attr.TypeWithElementType = CloudInitIpSetType{}
+	_ xattr.TypeWithValidate   = CloudInitIpSetType{}
 )
 
 var CloudInitIpSchema = schema.NestedAttributeObject{
@@ -79,18 +81,6 @@ var CloudInitIpConfigSchema = map[string]schema.Attribute{
 	},
 }
 
-type VirtualMachineCloudInitModel struct {
-	User *VirtualMachineCloudInitUserModel `tfsdk:"user"`
-	IP   CloudInitIpSetValue               `tfsdk:"ip"`
-	DNS  *VirtualMachineCloudInitDnsModel  `tfsdk:"dns"`
-}
-
-type VirtualMachineCloudInitUserModel struct {
-	Name       types.String `tfsdk:"name"`
-	Password   types.String `tfsdk:"password"`
-	PublicKeys types.List   `tfsdk:"public_keys"`
-}
-
 type VirtualMachineCloudInitIpModel struct {
 	Positition types.Int64                           `tfsdk:"position"`
 	V4         *VirtualMachineCloudInitIpConfigModel `tfsdk:"v4"`
@@ -102,11 +92,6 @@ type VirtualMachineCloudInitIpConfigModel struct {
 	Address types.String `tfsdk:"address"`
 	Netmask types.String `tfsdk:"netmask"`
 	Gateway types.String `tfsdk:"gateway"`
-}
-
-type VirtualMachineCloudInitDnsModel struct {
-	Nameserver types.String `tfsdk:"nameserver"`
-	Domain     types.String `tfsdk:"domain"`
 }
 
 var CloudInitIpConfig = types.ObjectType{
@@ -159,6 +144,7 @@ func (st CloudInitIpSetType) String() string {
 }
 
 func (c CloudInitIpSetType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
+	tflog.Info(ctx, fmt.Sprintf("PASSED IN: %v", in))
 	val, err := c.SetType.ValueFromTerraform(ctx, in)
 	if err != nil {
 		return nil, err
@@ -173,6 +159,7 @@ func (c CloudInitIpSetType) ValueFromTerraform(ctx context.Context, in tftypes.V
 		if err != nil {
 			return nil, fmt.Errorf("error converting config to terraform value: %w", err)
 		}
+
 		t.As(ctx, &v, basetypes.ObjectAsOptions{})
 		configs = append(configs, v)
 	}
@@ -215,38 +202,6 @@ func CloudInitIpToSetValue(ctx context.Context, ip []vm.VirtualMachineCloudInitI
 		models = append(models, m)
 	}
 	return CloudInitIpSetValueFrom(ctx, models)
-}
-
-func CloudInitToModel(ctx context.Context, ci *vm.VirtualMachineCloudInit) *VirtualMachineCloudInitModel {
-	tflog.Debug(ctx, fmt.Sprintf("Passed cloudinit: %v", ci))
-	if ci == nil {
-		return nil
-	}
-
-	m := VirtualMachineCloudInitModel{
-		IP: CloudInitIpToSetValue(ctx, ci.Ip),
-	}
-
-	if ci.User != nil {
-		user := VirtualMachineCloudInitUserModel{
-			Name:     utils.StringToTfType(ci.User.Name),
-			Password: utils.StringToTfType(ci.User.Password),
-		}
-		user.PublicKeys = utils.UnpackListType(ci.User.PublicKeys)
-		tflog.Debug(ctx, fmt.Sprintf("Converted cloudinit user: %v", user))
-		m.User = &user
-	}
-
-	if ci.Dns != nil {
-		dns := VirtualMachineCloudInitDnsModel{
-			Domain:     utils.StringToTfType(ci.Dns.Domain),
-			Nameserver: utils.StringToTfType(ci.Dns.Nameserver),
-		}
-		tflog.Debug(ctx, fmt.Sprintf("Converted cloudinit dns: %v", dns))
-		m.DNS = &dns
-	}
-
-	return &m
 }
 
 func translateIpConfig(c *vm.VirtualMachineCloudInitIpConfig) *VirtualMachineCloudInitIpConfigModel {

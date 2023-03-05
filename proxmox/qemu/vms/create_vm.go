@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
+	vt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms/types"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
+
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-func (r *virtualMachineResource) routeCreateVm(ctx context.Context, plan *qemu.VirtualMachineResourceModel) error {
+func (r *virtualMachineResource) routeCreateVm(ctx context.Context, plan *vt.VirtualMachineResourceModel) error {
 	tflog.Debug(ctx, "route virtual machine creation method")
 	switch true {
 	case plan.Clone != nil:
@@ -24,7 +25,7 @@ func (r *virtualMachineResource) routeCreateVm(ctx context.Context, plan *qemu.V
 	}
 }
 
-func (r *virtualMachineResource) clone(ctx context.Context, plan *qemu.VirtualMachineResourceModel) error {
+func (r *virtualMachineResource) clone(ctx context.Context, plan *vt.VirtualMachineResourceModel) error {
 	tflog.Debug(ctx, "clone virtual machine creation method")
 
 	node := plan.Node.ValueString()
@@ -52,7 +53,7 @@ func (r *virtualMachineResource) clone(ctx context.Context, plan *qemu.VirtualMa
 	return nil
 }
 
-func (r *virtualMachineResource) iso(ctx context.Context, plan *qemu.VirtualMachineResourceModel) error {
+func (r *virtualMachineResource) iso(ctx context.Context, plan *vt.VirtualMachineResourceModel) error {
 	tflog.Debug(ctx, "iso virtual machine creation method")
 
 	err := r.client.CreateVirtualMachineIso(ctx, &service.CreateVirtualMachineIsoInput{

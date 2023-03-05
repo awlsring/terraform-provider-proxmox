@@ -60,6 +60,22 @@ func (c VirtualMachineNetworkInterfaceSetType) ValueFromTerraform(ctx context.Co
 	}, err
 }
 
+func (d VirtualMachineNetworkInterfaceSetType) Equal(o attr.Type) bool {
+	if d.ElemType == nil {
+		return false
+	}
+
+	other, ok := o.(VirtualMachineNetworkInterfaceSetType)
+	if !ok {
+		other, ok := o.(types.SetType)
+		if !ok {
+			return false
+		}
+		return d.ElemType.Equal(other.ElemType)
+	}
+	return d.ElemType.Equal(other.ElemType)
+}
+
 type VirtualMachineNetworkInterfaceSetValue struct {
 	types.Set
 	Nics []VirtualMachineNetworkInterfaceModel

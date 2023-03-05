@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
+	vt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms/types"
 )
 
 type VirtualMachineTimeouts struct {
@@ -19,7 +19,7 @@ type VirtualMachineTimeouts struct {
 	ResizeDisk int64
 }
 
-var defaults = VirtualMachineTimeouts{
+var timeoutDefaults = VirtualMachineTimeouts{
 	Create:     600,
 	Delete:     600,
 	Stop:       600,
@@ -31,8 +31,8 @@ var defaults = VirtualMachineTimeouts{
 	ResizeDisk: 600,
 }
 
-func loadTimeouts(ctx context.Context, timeouts *qemu.VirtualMachineTerraformTimeouts) *VirtualMachineTimeouts {
-	t := defaults
+func loadTimeouts(ctx context.Context, timeouts *vt.VirtualMachineTerraformTimeouts) *VirtualMachineTimeouts {
+	t := timeoutDefaults
 	if timeouts == nil {
 		return &t
 	}

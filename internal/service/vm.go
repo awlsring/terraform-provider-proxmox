@@ -69,7 +69,7 @@ func (c *Proxmox) DeleteVirtualMachine(ctx context.Context, node string, vmid in
 	return nil
 }
 
-func (c *Proxmox) DescribeVirtualMachines(ctx context.Context, node string) ([]vm.VirtualMachine, error) {
+func (c *Proxmox) DescribeVirtualMachinesOld(ctx context.Context, node string) ([]vm.VirtualMachine, error) {
 	vms, err := c.ListVirtualMachines(ctx, node)
 	if err != nil {
 		panic(err)

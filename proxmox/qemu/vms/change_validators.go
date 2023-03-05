@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
+	vt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms/types"
+
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 )
 
@@ -32,7 +33,7 @@ func isDiskInList(disk types.VirtualMachineDiskModel, list []types.VirtualMachin
 	return false
 }
 
-func changeValidatorDiskSize(_ context.Context, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel, resp *resource.ModifyPlanResponse) {
+func changeValidatorDiskSize(_ context.Context, state *vt.VirtualMachineResourceModel, plan *vt.VirtualMachineResourceModel, resp *resource.ModifyPlanResponse) {
 	for i, disk := range plan.Disks.Disks {
 		previous := state.Disks.Disks[i]
 		if !disksAreSame(previous, disk) {
@@ -45,7 +46,7 @@ func changeValidatorDiskSize(_ context.Context, state *qemu.VirtualMachineResour
 	}
 }
 
-func changeValidatorDiskStorage(_ context.Context, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel, resp *resource.ModifyPlanResponse) {
+func changeValidatorDiskStorage(_ context.Context, state *vt.VirtualMachineResourceModel, plan *vt.VirtualMachineResourceModel, resp *resource.ModifyPlanResponse) {
 	for i, disk := range plan.Disks.Disks {
 		previous := state.Disks.Disks[i]
 		if disksAreSame(previous, disk) {
@@ -59,7 +60,7 @@ func changeValidatorDiskStorage(_ context.Context, state *qemu.VirtualMachineRes
 	}
 }
 
-func changeValidatorDiskRemoved(_ context.Context, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel, resp *resource.ModifyPlanResponse) {
+func changeValidatorDiskRemoved(_ context.Context, state *vt.VirtualMachineResourceModel, plan *vt.VirtualMachineResourceModel, resp *resource.ModifyPlanResponse) {
 	removedDisks := []types.VirtualMachineDiskModel{}
 	for _, disk := range state.Disks.Disks {
 		if !isDiskInList(disk, plan.Disks.Disks) {
@@ -75,7 +76,7 @@ func changeValidatorDiskRemoved(_ context.Context, state *qemu.VirtualMachineRes
 	}
 }
 
-func powerOffValidator(ctx context.Context, client *service.Proxmox, state *qemu.VirtualMachineResourceModel, plan *qemu.VirtualMachineResourceModel, resp *resource.ModifyPlanResponse) {
+func powerOffValidator(ctx context.Context, client *service.Proxmox, state *vt.VirtualMachineResourceModel, plan *vt.VirtualMachineResourceModel, resp *resource.ModifyPlanResponse) {
 	isSensitive, err := isSensitivePropertyChanged(ctx, state, plan)
 	if err != nil {
 		resp.Diagnostics.AddError("Error checking if sensitive property changed", err.Error())

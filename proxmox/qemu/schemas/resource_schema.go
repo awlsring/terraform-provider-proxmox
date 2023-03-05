@@ -1,4 +1,4 @@
-package qemu
+package schemas
 
 import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/defaults"

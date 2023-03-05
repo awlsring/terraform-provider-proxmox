@@ -2,15 +2,16 @@ package vms
 
 import (
 	"context"
-	"math/big"
+	"fmt"
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
-	"github.com/awlsring/terraform-provider-proxmox/internal/service/vm"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/schemas"
+	vt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms/types"
+
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -27,8 +28,8 @@ type virtualMachinesDataSource struct {
 }
 
 type virtualMachinesDataSourceModel struct {
-	VirtualMachines []qemu.VirtualMachineModel `tfsdk:"virtual_machines"`
-	Filters         []filters.FilterModel      `tfsdk:"filters"`
+	VirtualMachines vt.VirtualMachineDataSourceSetValue `tfsdk:"virtual_machines"`
+	Filters         []filters.FilterModel               `tfsdk:"filters"`
 }
 
 func (d *virtualMachinesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -49,7 +50,7 @@ func (d *virtualMachinesDataSource) Schema(_ context.Context, _ datasource.Schem
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"filters":          filter.Schema(),
-			"virtual_machines": qemu.DataSourceSchema,
+			"virtual_machines": schemas.DataSourceSchema,
 		},
 	}
 }
@@ -63,9 +64,8 @@ func (d *virtualMachinesDataSource) Read(ctx context.Context, req datasource.Rea
 
 	nodes := filters.DetermineNode(d.client, state.Filters)
 
-	virtualMachines := []vm.VirtualMachine{}
 	for _, node := range nodes {
-		vm, err := d.client.DescribeVirtualMachines(ctx, node)
+		vms, err := d.client.DescribeVirtualMachines(ctx, node)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Unable to get virtual machines",
@@ -74,55 +74,31 @@ func (d *virtualMachinesDataSource) Read(ctx context.Context, req datasource.Rea
 			)
 			return
 		}
-		virtualMachines = append(virtualMachines, vm...)
+
+		vmModels := []vt.VirtualMachineDataSourceModel{}
+		for _, vm := range vms {
+			tflog.Debug(ctx, fmt.Sprintf("Converting VM %v to model", vm.VmId))
+			model := vt.VMToModel(ctx, vm)
+			vmModels = append(vmModels, *model)
+		}
+
+		state.VirtualMachines, err = vt.VirtualMachineDataSourceSetValueFrom(ctx, vmModels)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to convert virtual machines to state",
+				"An error was encountered converting virtual machines to state.\n"+
+					err.Error(),
+			)
+			return
+		}
 	}
 
-	for _, vm := range virtualMachines {
-		stateTemplate := qemu.VirtualMachineModel{
-			ID:         types.NumberValue(big.NewFloat(float64(vm.Id))),
-			Node:       types.StringValue(vm.Node),
-			Name:       types.StringValue(vm.Name),
-			Cores:      types.NumberValue(big.NewFloat(float64(vm.Cores))),
-			Memory:     types.Int64Value(vm.Memory),
-			Agent:      types.BoolValue(vm.Agent),
-			Tags:       []types.String{},
-			Disks:      []qemu.VirtualDiskModel{},
-			Interfaces: []qemu.VirtualInterfaceModel{},
-		}
-
-		for _, tag := range vm.Tags {
-			stateTemplate.Tags = append(stateTemplate.Tags, types.StringValue(tag))
-		}
-
-		for _, disk := range vm.VirtualDisks {
-			stateDisk := qemu.VirtualDiskModel{
-				Storage:  types.StringValue(disk.Storage),
-				Size:     types.Int64Value(disk.Size),
-				Type:     types.StringValue(string(disk.Type)),
-				Position: types.StringValue(disk.Position),
-				Discard:  types.BoolValue(disk.Discard),
-			}
-			stateTemplate.Disks = append(stateTemplate.Disks, stateDisk)
-		}
-
-		for _, iface := range vm.VirtualNetworkDevices {
-			stateInterface := qemu.VirtualInterfaceModel{
-				Bridge:     types.StringValue(iface.Bridge),
-				Firewall:   types.BoolValue(iface.FirewallEnabled),
-				Model:      types.StringValue(string(iface.Model)),
-				MacAddress: types.StringValue(iface.Mac),
-				Vlan:       types.NumberValue(big.NewFloat(float64(iface.Vlan))),
-				Position:   types.StringValue(iface.Position),
-			}
-			stateTemplate.Interfaces = append(stateTemplate.Interfaces, stateInterface)
-		}
-
-		state.VirtualMachines = append(state.VirtualMachines, stateTemplate)
-	}
-
+	tflog.Debug(ctx, fmt.Sprintf("Found %v virtual machines, assigning to state", len(state.VirtualMachines.Elements())))
 	diags := resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
+		tflog.Error(ctx, "Error setting state")
 		return
 	}
+	tflog.Debug(ctx, "Successfully read virtual machines")
 }
