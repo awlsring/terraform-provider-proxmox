@@ -52,7 +52,7 @@ var VirtualMachineDataSourceType = types.ObjectType{
 				"user": types.ObjectType{
 					AttrTypes: map[string]attr.Type{
 						"password": types.StringType,
-						"public_keys": types.ListType{
+						"public_keys": types.SetType{
 							ElemType: types.StringType,
 						},
 						"name": types.StringType,

@@ -18,7 +18,6 @@ var DiskObjectDataSourceSchema = dschema.NestedAttributeObject{
 			Description: "The storage the disk is on.",
 		},
 		"file_format": dschema.StringAttribute{
-			Optional:    true,
 			Computed:    true,
 			Description: "The file format of the disk.",
 		},
@@ -27,32 +26,26 @@ var DiskObjectDataSourceSchema = dschema.NestedAttributeObject{
 			Description: "The size of the disk in GiB.",
 		},
 		"use_iothread": dschema.BoolAttribute{
-			Optional:    true,
 			Computed:    true,
 			Description: "Whether to use an iothread for the disk.",
 		},
 		"speed_limits": dschema.SingleNestedAttribute{
-			Optional:    true,
 			Computed:    true,
 			Description: "The speed limits of the disk. If not set, no speed limitations are applied.",
 			Attributes: map[string]dschema.Attribute{
 				"read": dschema.Int64Attribute{
-					Optional:    true,
 					Computed:    true,
 					Description: "The read speed limit in bytes per second.",
 				},
 				"write": dschema.Int64Attribute{
-					Optional:    true,
 					Computed:    true,
 					Description: "The write speed limit in bytes per second.",
 				},
 				"write_burstable": dschema.Int64Attribute{
-					Optional:    true,
 					Computed:    true,
 					Description: "The write burstable speed limit in bytes per second.",
 				},
 				"read_burstable": dschema.Int64Attribute{
-					Optional:    true,
 					Computed:    true,
 					Description: "The read burstable speed limit in bytes per second.",
 				},
@@ -64,7 +57,6 @@ var DiskObjectDataSourceSchema = dschema.NestedAttributeObject{
 		},
 		"ssd_emulation": dschema.BoolAttribute{
 			Computed:    true,
-			Optional:    true,
 			Description: "Whether to use SSD emulation. conflicts with virtio disk type.",
 		},
 		"position": dschema.Int64Attribute{
@@ -73,7 +65,6 @@ var DiskObjectDataSourceSchema = dschema.NestedAttributeObject{
 		},
 		"discard": dschema.BoolAttribute{
 			Computed:    true,
-			Optional:    true,
 			Description: "Whether the disk has discard enabled.",
 		},
 	},

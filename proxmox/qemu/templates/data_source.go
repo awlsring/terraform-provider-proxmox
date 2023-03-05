@@ -6,7 +6,6 @@ import (
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/schemas"
 	qt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -49,7 +48,7 @@ func (d *templatesDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"filters":   filter.Schema(),
-			"templates": schemas.DataSourceSchema,
+			"templates": DataSourceSchema,
 		},
 	}
 }

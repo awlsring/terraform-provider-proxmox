@@ -63,27 +63,22 @@ var PCIDeviceObjectDataSourceSchema = dschema.NestedAttributeObject{
 			Description: "The device ID of the PCI device.",
 		},
 		"pcie": dschema.BoolAttribute{
-			Optional:    true,
 			Computed:    true,
 			Description: "Whether the PCI device is PCIe.",
 		},
 		"primary_gpu": dschema.BoolAttribute{
-			Optional:    true,
 			Computed:    true,
 			Description: "Whether the PCI device is the primary GPU.",
 		},
 		"mdev": dschema.StringAttribute{
-			Optional:    true,
 			Computed:    true,
 			Description: "The mediated device name.",
 		},
 		"rombar": dschema.BoolAttribute{
-			Optional:    true,
 			Computed:    true,
 			Description: "Make the firmware room visible to the VM.",
 		},
 		"rom_file": dschema.StringAttribute{
-			Optional:    true,
 			Computed:    true,
 			Description: "The relative path to the ROM for the device.",
 		},

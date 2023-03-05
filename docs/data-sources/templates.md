@@ -35,35 +35,32 @@ Required:
 <a id="nestedatt--templates"></a>
 ### Nested Schema for `templates`
 
-Optional:
+Read-Only:
 
 - `agent` (Attributes) The agent configuration. (see [below for nested schema](#nestedatt--templates--agent))
 - `bios` (String) The BIOS type.
 - `cloud_init` (Attributes) (see [below for nested schema](#nestedatt--templates--cloud_init))
 - `cpu` (Attributes) The CPU configuration. (see [below for nested schema](#nestedatt--templates--cpu))
-- `description` (String) The CPU description.
-- `keyboard_layout` (String) The keyboard layout.
-- `machine_type` (String) The machine type.
-- `name` (String) The name of the virtual machine.
-- `resource_pool` (String) The resource pool the virtual machine is in.
-- `start_on_node_boot` (Boolean) Whether to start the virtual machine on node boot.
-- `tags` (Set of String) The tags of the virtual machine.
-- `type` (String) The operating system type.
-
-Read-Only:
-
+- `description` (String) The template description.
 - `disks` (Attributes Set) The terrafrom generated disks attached to the VM. (see [below for nested schema](#nestedatt--templates--disks))
-- `id` (Number) The identifier of the virtual machine.
+- `id` (Number) The identifier of the template.
+- `keyboard_layout` (String) The keyboard layout.
 - `kvm_arguments` (String) The arguments to pass to KVM.
+- `machine_type` (String) The machine type.
 - `memory` (Attributes) (see [below for nested schema](#nestedatt--templates--memory))
+- `name` (String) The name of the template.
 - `network_interfaces` (Attributes Set) (see [below for nested schema](#nestedatt--templates--network_interfaces))
-- `node` (String) The node to create the virtual machine on.
+- `node` (String) The node to create the template on.
 - `pci_devices` (Attributes Set) PCI devices passed through to the VM. (see [below for nested schema](#nestedatt--templates--pci_devices))
+- `resource_pool` (String) The resource pool the template is in.
+- `start_on_node_boot` (Boolean) Whether to start the template on node boot.
+- `tags` (Set of String) The tags of the template.
+- `type` (String) The operating system type.
 
 <a id="nestedatt--templates--agent"></a>
 ### Nested Schema for `templates.agent`
 
-Optional:
+Read-Only:
 
 - `enabled` (Boolean) Whether the agent is enabled.
 - `type` (String) The guest agent type.
@@ -73,7 +70,7 @@ Optional:
 <a id="nestedatt--templates--cloud_init"></a>
 ### Nested Schema for `templates.cloud_init`
 
-Optional:
+Read-Only:
 
 - `dns` (Attributes) (see [below for nested schema](#nestedatt--templates--cloud_init--dns))
 - `ip` (Attributes Set) (see [below for nested schema](#nestedatt--templates--cloud_init--ip))
@@ -82,7 +79,7 @@ Optional:
 <a id="nestedatt--templates--cloud_init--dns"></a>
 ### Nested Schema for `templates.cloud_init.dns`
 
-Optional:
+Read-Only:
 
 - `domain` (String) The domain to use for the machine.
 - `nameserver` (String) The nameserver to use for the machine.
@@ -91,7 +88,7 @@ Optional:
 <a id="nestedatt--templates--cloud_init--ip"></a>
 ### Nested Schema for `templates.cloud_init.ip`
 
-Optional:
+Read-Only:
 
 - `position` (Number) The position of the network interface in the VM as an int. Used to determine the interface name (net0, net1, etc).
 - `v4` (Attributes) (see [below for nested schema](#nestedatt--templates--cloud_init--ip--v4))
@@ -100,7 +97,7 @@ Optional:
 <a id="nestedatt--templates--cloud_init--ip--v4"></a>
 ### Nested Schema for `templates.cloud_init.ip.v6`
 
-Optional:
+Read-Only:
 
 - `address` (String) The IP address to use for the machine.
 - `dhcp` (Boolean) Whether to use DHCP to get the IP address.
@@ -111,7 +108,7 @@ Optional:
 <a id="nestedatt--templates--cloud_init--ip--v6"></a>
 ### Nested Schema for `templates.cloud_init.ip.v6`
 
-Optional:
+Read-Only:
 
 - `address` (String) The IP address to use for the machine.
 - `dhcp` (Boolean) Whether to use DHCP to get the IP address.
@@ -123,18 +120,18 @@ Optional:
 <a id="nestedatt--templates--cloud_init--user"></a>
 ### Nested Schema for `templates.cloud_init.user`
 
-Optional:
+Read-Only:
 
 - `name` (String) The name of the user.
 - `password` (String) The password of the user.
-- `public_keys` (List of String) The public ssh keys of the user.
+- `public_keys` (Set of String) The public ssh keys of the user.
 
 
 
 <a id="nestedatt--templates--cpu"></a>
 ### Nested Schema for `templates.cpu`
 
-Optional:
+Read-Only:
 
 - `architecture` (String) The CPU architecture.
 - `cores` (Number) The number of CPU cores.
@@ -146,25 +143,22 @@ Optional:
 <a id="nestedatt--templates--disks"></a>
 ### Nested Schema for `templates.disks`
 
-Optional:
+Read-Only:
 
 - `discard` (Boolean) Whether the disk has discard enabled.
 - `file_format` (String) The file format of the disk.
-- `speed_limits` (Attributes) The speed limits of the disk. If not set, no speed limitations are applied. (see [below for nested schema](#nestedatt--templates--disks--speed_limits))
-- `ssd_emulation` (Boolean) Whether to use SSD emulation. conflicts with virtio disk type.
-- `use_iothread` (Boolean) Whether to use an iothread for the disk.
-
-Read-Only:
-
 - `interface_type` (String) The type of the disk.
 - `position` (Number) The position of the disk. (0, 1, 2, etc.) This is combined with the `interface_type` to determine the disk name.
 - `size` (Number) The size of the disk in GiB.
+- `speed_limits` (Attributes) The speed limits of the disk. If not set, no speed limitations are applied. (see [below for nested schema](#nestedatt--templates--disks--speed_limits))
+- `ssd_emulation` (Boolean) Whether to use SSD emulation. conflicts with virtio disk type.
 - `storage` (String) The storage the disk is on.
+- `use_iothread` (Boolean) Whether to use an iothread for the disk.
 
 <a id="nestedatt--templates--disks--speed_limits"></a>
 ### Nested Schema for `templates.disks.speed_limits`
 
-Optional:
+Read-Only:
 
 - `read` (Number) The read speed limit in bytes per second.
 - `read_burstable` (Number) The read burstable speed limit in bytes per second.
@@ -176,7 +170,7 @@ Optional:
 <a id="nestedatt--templates--memory"></a>
 ### Nested Schema for `templates.memory`
 
-Optional:
+Read-Only:
 
 - `dedicated` (Number) The size of the memory in MB.
 - `floating` (Number) The floating memory in MB.
@@ -186,36 +180,30 @@ Optional:
 <a id="nestedatt--templates--network_interfaces"></a>
 ### Nested Schema for `templates.network_interfaces`
 
-Optional:
+Read-Only:
 
+- `bridge` (String) The bridge the network interface is on.
 - `enabled` (Boolean) Whether the network interface is enabled.
 - `mac_address` (String) The MAC address of the network interface.
 - `model` (String) The model of the network interface.
 - `mtu` (Number) The MTU of the network interface. Only valid for virtio.
+- `position` (Number) The position of the network interface in the VM as an int. Used to determine the interface name (net0, net1, etc).
 - `rate_limit` (Number) The rate limit of the network interface in megabytes per second.
 - `use_firewall` (Boolean) Whether the firewall for the network interface is enabled.
 - `vlan` (Number) The VLAN tag of the network interface.
-
-Read-Only:
-
-- `bridge` (String) The bridge the network interface is on.
-- `position` (Number) The position of the network interface in the VM as an int. Used to determine the interface name (net0, net1, etc).
 
 
 <a id="nestedatt--templates--pci_devices"></a>
 ### Nested Schema for `templates.pci_devices`
 
-Optional:
+Read-Only:
 
+- `id` (String) The device ID of the PCI device.
 - `mdev` (String) The mediated device name.
+- `name` (String) The device name of the PCI device.
 - `pcie` (Boolean) Whether the PCI device is PCIe.
 - `primary_gpu` (Boolean) Whether the PCI device is the primary GPU.
 - `rom_file` (String) The relative path to the ROM for the device.
 - `rombar` (Boolean) Make the firmware room visible to the VM.
-
-Read-Only:
-
-- `id` (String) The device ID of the PCI device.
-- `name` (String) The device name of the PCI device.
 
 

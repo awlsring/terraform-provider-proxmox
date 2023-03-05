@@ -45,7 +45,7 @@ var ResourceSchema = schema.Schema{
 		},
 		"description": schema.StringAttribute{
 			Optional:    true,
-			Description: "The CPU description.",
+			Description: "The virtual machine description.",
 		},
 		"tags": schema.SetAttribute{
 			Optional:    true,

@@ -16,18 +16,15 @@ import (
 
 var CloudInitDataSourceAttributes = map[string]dschema.Attribute{
 	"user": dschema.SingleNestedAttribute{
-		Optional:   true,
 		Computed:   true,
 		Attributes: CloudInitUserDataSourceAttributes,
 	},
 	"ip": dschema.SetNestedAttribute{
-		Optional:     true,
 		Computed:     true,
 		CustomType:   NewCloudInitIpSetType(),
 		NestedObject: CloudInitIpDataSourceSchema,
 	},
 	"dns": dschema.SingleNestedAttribute{
-		Optional:   true,
 		Computed:   true,
 		Attributes: CloudInitDnsDataSourceAttributes,
 	},
@@ -36,16 +33,13 @@ var CloudInitDataSourceAttributes = map[string]dschema.Attribute{
 var CloudInitUserDataSourceAttributes = map[string]dschema.Attribute{
 	"name": dschema.StringAttribute{
 		Computed:    true,
-		Optional:    true,
 		Description: "The name of the user.",
 	},
 	"password": dschema.StringAttribute{
-		Optional:    true,
 		Computed:    true,
 		Description: "The password of the user.",
 	},
-	"public_keys": dschema.ListAttribute{
-		Optional:    true,
+	"public_keys": dschema.SetAttribute{
 		Computed:    true,
 		Description: "The public ssh keys of the user.",
 		ElementType: types.StringType,
@@ -56,17 +50,14 @@ var CloudInitIpDataSourceSchema = dschema.NestedAttributeObject{
 	Attributes: map[string]dschema.Attribute{
 		"position": dschema.Int64Attribute{
 			Computed:    true,
-			Optional:    true,
 			Description: "The position of the network interface in the VM as an int. Used to determine the interface name (net0, net1, etc).",
 		},
 		"v4": dschema.SingleNestedAttribute{
 			Computed:   true,
-			Optional:   true,
 			Attributes: CloudInitIpConfigDataSourceSchema,
 		},
 		"v6": dschema.SingleNestedAttribute{
 			Computed:   true,
-			Optional:   true,
 			Attributes: CloudInitIpConfigDataSourceSchema,
 		},
 	},
@@ -74,22 +65,18 @@ var CloudInitIpDataSourceSchema = dschema.NestedAttributeObject{
 
 var CloudInitIpConfigDataSourceSchema = map[string]dschema.Attribute{
 	"dhcp": dschema.BoolAttribute{
-		Optional:    true,
 		Computed:    true,
 		Description: "Whether to use DHCP to get the IP address.",
 	},
 	"address": dschema.StringAttribute{
-		Optional:    true,
 		Computed:    true,
 		Description: "The IP address to use for the machine.",
 	},
 	"netmask": dschema.StringAttribute{
-		Optional:    true,
 		Computed:    true,
 		Description: "The IP address netmask to use for the machine.",
 	},
 	"gateway": dschema.StringAttribute{
-		Optional:    true,
 		Computed:    true,
 		Description: "The gateway to use for the machine.",
 	},
@@ -97,12 +84,10 @@ var CloudInitIpConfigDataSourceSchema = map[string]dschema.Attribute{
 
 var CloudInitDnsDataSourceAttributes = map[string]dschema.Attribute{
 	"nameserver": dschema.StringAttribute{
-		Optional:    true,
 		Computed:    true,
 		Description: "The nameserver to use for the machine.",
 	},
 	"domain": dschema.StringAttribute{
-		Optional:    true,
 		Computed:    true,
 		Description: "The domain to use for the machine.",
 	},

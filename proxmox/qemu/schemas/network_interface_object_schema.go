@@ -98,27 +98,23 @@ var NetworkInterfaceObjectDataSourceSchema = dschema.NestedAttributeObject{
 			Description: "The bridge the network interface is on.",
 		},
 		"enabled": dschema.BoolAttribute{
-			Optional:    true,
 			Computed:    true,
 			Description: "Whether the network interface is enabled.",
 		},
 		"use_firewall": dschema.BoolAttribute{
-			Optional:    true,
 			Computed:    true,
 			Description: "Whether the firewall for the network interface is enabled.",
 		},
 		"mac_address": dschema.StringAttribute{
 			Computed:    true,
-			Optional:    true,
 			Description: "The MAC address of the network interface.",
 		},
 		"model": dschema.StringAttribute{
 			Computed:    true,
-			Optional:    true,
 			Description: "The model of the network interface.",
 		},
 		"rate_limit": dschema.Int64Attribute{
-			Optional:    true,
+			Computed:    true,
 			Description: "The rate limit of the network interface in megabytes per second.",
 		},
 		"position": dschema.Int64Attribute{
@@ -126,11 +122,11 @@ var NetworkInterfaceObjectDataSourceSchema = dschema.NestedAttributeObject{
 			Description: "The position of the network interface in the VM as an int. Used to determine the interface name (net0, net1, etc).",
 		},
 		"vlan": dschema.Int64Attribute{
-			Optional:    true,
+			Computed:    true,
 			Description: "The VLAN tag of the network interface.",
 		},
 		"mtu": dschema.Int64Attribute{
-			Optional:    true,
+			Computed:    true,
 			Description: "The MTU of the network interface. Only valid for virtio.",
 		},
 	},

@@ -6,8 +6,8 @@ import (
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/schemas"
 	qt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms/schemas"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-log/tflog"

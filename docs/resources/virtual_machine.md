@@ -26,7 +26,7 @@ description: |-
 - `clone` (Attributes) (see [below for nested schema](#nestedatt--clone))
 - `cloud_init` (Attributes) (see [below for nested schema](#nestedatt--cloud_init))
 - `cpu` (Attributes) The CPU configuration. (see [below for nested schema](#nestedatt--cpu))
-- `description` (String) The CPU description.
+- `description` (String) The virtual machine description.
 - `disks` (Attributes Set) The terrafrom generated disks attached to the VM. (see [below for nested schema](#nestedatt--disks))
 - `id` (Number) The identifier of the virtual machine.
 - `iso` (Attributes) The operating system configuration. (see [below for nested schema](#nestedatt--iso))
@@ -136,7 +136,7 @@ Required:
 Optional:
 
 - `password` (String) The password of the user.
-- `public_keys` (List of String) The public ssh keys of the user.
+- `public_keys` (Set of String) The public ssh keys of the user.
 
 
 
