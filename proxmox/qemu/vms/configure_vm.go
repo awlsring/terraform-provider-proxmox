@@ -133,10 +133,8 @@ func formConfigureRequests(
 
 	updates := determineUpdates(ctx, node, vmId, state, plan)
 	deletes := determineDeletes(ctx, node, vmId, state, plan)
-	// resizes := determineDiskResizes(ctx, node, vmId, state, plan)
 
 	return updates, deletes
-
 }
 
 func (r *virtualMachineResource) formResizeRequests(ctx context.Context, node string, vmId int, plan *vt.VirtualMachineResourceModel) ([]service.ResizeVirtualMachineDiskInput, error) {
@@ -290,14 +288,33 @@ func determineDeletes(ctx context.Context, node string, vmId int, state *vt.Virt
 		fieldsToDelete = append(fieldsToDelete, "tags")
 	}
 
-	removedDisks := determineRemoveDisks(ctx, old.Disks.Disks, plan.Disks.Disks)
+	removedDisks := determineRemovedDisks(ctx, old.Disks.Disks, plan.Disks.Disks)
 	if len(removedDisks) > 0 {
 		fieldsToDelete = append(fieldsToDelete, removedDisks...)
 	}
 
-	removedNics := determineRemoveNetworkInterfaces(ctx, old.NetworkInterfaces.Nics, plan.NetworkInterfaces.Nics)
+	removedNics := determineRemovedNetworkInterfaces(ctx, old.NetworkInterfaces.Nics, plan.NetworkInterfaces.Nics)
 	if len(removedNics) > 0 {
 		fieldsToDelete = append(fieldsToDelete, removedNics...)
+	}
+
+	oldCfgs := []ct.VirtualMachineCloudInitIpModel{}
+	if old.CloudInit != nil {
+		if !plan.CloudInit.IP.IsNull() {
+			oldCfgs = old.CloudInit.IP.Configs
+		}
+	}
+
+	planCfgs := []ct.VirtualMachineCloudInitIpModel{}
+	if plan.CloudInit != nil {
+		if !plan.CloudInit.IP.IsNull() {
+			planCfgs = plan.CloudInit.IP.Configs
+		}
+	}
+
+	removedIpCfg := determineRemovedIpConfig(ctx, oldCfgs, planCfgs)
+	if len(removedIpCfg) > 0 {
+		fieldsToDelete = append(fieldsToDelete, removedIpCfg...)
 	}
 
 	if len(fieldsToDelete) != 0 {
@@ -325,7 +342,35 @@ func flattenNetworkInterfaces(ctx context.Context, state []ct.VirtualMachineNetw
 	return stateNics, planNics
 }
 
-func determineRemoveNetworkInterfaces(ctx context.Context, state []ct.VirtualMachineNetworkInterfaceModel, plan []ct.VirtualMachineNetworkInterfaceModel) []string {
+func determineRemovedIpConfig(ctx context.Context, state []ct.VirtualMachineCloudInitIpModel, plan []ct.VirtualMachineCloudInitIpModel) []string {
+	stateCfg, planCfg := flattenIpConfigs(ctx, state, plan)
+
+	removeCfg := []string{}
+	for _, nic := range stateCfg {
+		if !utils.ListContains(planCfg, nic) {
+			removeCfg = append(removeCfg, nic)
+		}
+	}
+
+	return removeCfg
+}
+
+func flattenIpConfigs(ctx context.Context, state []ct.VirtualMachineCloudInitIpModel, plan []ct.VirtualMachineCloudInitIpModel) ([]string, []string) {
+	stateConfigs := []string{}
+	planConfigs := []string{}
+
+	for _, cfg := range state {
+		stateConfigs = append(stateConfigs, fmt.Sprintf("ipconfig%v", cfg.Position.ValueInt64()))
+	}
+
+	for _, cfg := range plan {
+		planConfigs = append(planConfigs, fmt.Sprintf("ipconfig%v", cfg.Position.ValueInt64()))
+	}
+
+	return stateConfigs, planConfigs
+}
+
+func determineRemovedNetworkInterfaces(ctx context.Context, state []ct.VirtualMachineNetworkInterfaceModel, plan []ct.VirtualMachineNetworkInterfaceModel) []string {
 	stateNics, planNics := flattenNetworkInterfaces(ctx, state, plan)
 
 	removeNics := []string{}
@@ -355,7 +400,7 @@ func determineAddedNetworkInterfaces(ctx context.Context, state []ct.VirtualMach
 	return addNics
 }
 
-func determineRemoveDisks(ctx context.Context, state []ct.VirtualMachineDiskModel, plan []ct.VirtualMachineDiskModel) []string {
+func determineRemovedDisks(ctx context.Context, state []ct.VirtualMachineDiskModel, plan []ct.VirtualMachineDiskModel) []string {
 	stateDisks, planDisks := flattenDisks(ctx, state, plan)
 	tflog.Debug(ctx, fmt.Sprintf("stateDisks: %v", stateDisks))
 	tflog.Debug(ctx, fmt.Sprintf("planDisks: %v", planDisks))
@@ -638,7 +683,7 @@ func FormCloudInitConfig(ctx context.Context, ci *ct.VirtualMachineCloudInitMode
 			if !ci.User.Password.IsNull() || ci.User.Password.IsUnknown() {
 				user.Password = utils.OptionalToPointerString(ci.User.Password.ValueString())
 			}
-			user.PublicKeys = utils.ListTypeToStringSlice(ci.User.PublicKeys)
+			user.PublicKeys = utils.SetTypeToStringSlice(ci.User.PublicKeys)
 			tflog.Debug(ctx, fmt.Sprintf("Determined User: %v", user))
 			c.User = &user
 		}

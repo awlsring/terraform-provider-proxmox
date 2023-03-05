@@ -205,7 +205,6 @@ func (r *virtualMachineResource) Read(ctx context.Context, req resource.ReadRequ
 		)
 		return
 	}
-	tflog.Debug(ctx, fmt.Sprintf("computed disks '%v'", m.ComputedDisks))
 	m.ComputedDisks = state.ComputedDisks
 	m.ComputedNetworkInterfaces = state.ComputedNetworkInterfaces
 	m.ComputedPCIDevices = state.ComputedPCIDevices

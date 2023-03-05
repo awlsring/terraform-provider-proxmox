@@ -6,8 +6,10 @@ import (
 
 	"github.com/awlsring/terraform-provider-proxmox/internal/service/vm"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/utils"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -115,6 +117,9 @@ var CloudInitAttributes = map[string]schema.Attribute{
 		Optional:     true,
 		CustomType:   NewCloudInitIpSetType(),
 		NestedObject: CloudInitIpSchema,
+		Validators: []validator.Set{
+			setvalidator.SizeAtLeast(1),
+		},
 	},
 	"dns": schema.SingleNestedAttribute{
 		Optional:   true,
@@ -131,10 +136,13 @@ var CloudInitUserAttributes = map[string]schema.Attribute{
 		Optional:    true,
 		Description: "The password of the user.",
 	},
-	"public_keys": schema.ListAttribute{
+	"public_keys": schema.SetAttribute{
 		Optional:    true,
 		Description: "The public ssh keys of the user.",
 		ElementType: types.StringType,
+		Validators: []validator.Set{
+			setvalidator.SizeAtLeast(1),
+		},
 	},
 }
 
@@ -158,7 +166,7 @@ type VirtualMachineCloudInitModel struct {
 type VirtualMachineCloudInitUserModel struct {
 	Name       types.String `tfsdk:"name"`
 	Password   types.String `tfsdk:"password"`
-	PublicKeys types.List   `tfsdk:"public_keys"`
+	PublicKeys types.Set    `tfsdk:"public_keys"`
 }
 
 type VirtualMachineCloudInitDnsModel struct {
@@ -181,7 +189,7 @@ func CloudInitToModel(ctx context.Context, ci *vm.VirtualMachineCloudInit) *Virt
 			Name:     utils.StringToTfType(ci.User.Name),
 			Password: utils.StringToTfType(ci.User.Password),
 		}
-		user.PublicKeys = utils.UnpackListType(ci.User.PublicKeys)
+		user.PublicKeys = utils.UnpackSetType(ci.User.PublicKeys)
 		tflog.Debug(ctx, fmt.Sprintf("Converted cloudinit user: %v", user))
 		m.User = &user
 	}

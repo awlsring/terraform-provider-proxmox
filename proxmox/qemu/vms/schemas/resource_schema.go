@@ -6,6 +6,7 @@ import (
 	t "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -51,6 +52,9 @@ var ResourceSchema = schema.Schema{
 			Computed:    true,
 			Description: "The tags of the virtual machine.",
 			ElementType: types.StringType,
+			Validators: []validator.Set{
+				setvalidator.SizeAtLeast(1),
+			},
 		},
 		// creation configuration
 		"clone": schema.SingleNestedAttribute{
@@ -298,6 +302,9 @@ var ResourceSchema = schema.Schema{
 			Description:  "The terrafrom generated disks attached to the VM.",
 			CustomType:   t.NewVirtualMachineDiskSetType(),
 			NestedObject: qs.DiskObjectSchema,
+			Validators: []validator.Set{
+				setvalidator.SizeAtLeast(1),
+			},
 		},
 		"computed_disks": schema.SetNestedAttribute{
 			Computed:     true,
@@ -310,6 +317,9 @@ var ResourceSchema = schema.Schema{
 			Description:  "PCI devices passed through to the VM.",
 			CustomType:   t.NewVirtualMachinePCIDeviceSetType(),
 			NestedObject: qs.PCIDeviceObjectSchema,
+			Validators: []validator.Set{
+				setvalidator.SizeAtLeast(1),
+			},
 		},
 		"computed_pci_devices": schema.SetNestedAttribute{
 			Computed:     true,
@@ -323,6 +333,9 @@ var ResourceSchema = schema.Schema{
 			NestedObject: qs.NetworkInterfaceObjectSchema,
 			PlanModifiers: []planmodifier.Set{
 				setplanmodifier.UseStateForUnknown(),
+			},
+			Validators: []validator.Set{
+				setvalidator.SizeAtLeast(1),
 			},
 		},
 		"computed_network_interfaces": schema.SetNestedAttribute{

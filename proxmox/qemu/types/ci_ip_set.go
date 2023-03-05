@@ -82,9 +82,9 @@ var CloudInitIpConfigSchema = map[string]schema.Attribute{
 }
 
 type VirtualMachineCloudInitIpModel struct {
-	Positition types.Int64                           `tfsdk:"position"`
-	V4         *VirtualMachineCloudInitIpConfigModel `tfsdk:"v4"`
-	V6         *VirtualMachineCloudInitIpConfigModel `tfsdk:"v6"`
+	Position types.Int64                           `tfsdk:"position"`
+	V4       *VirtualMachineCloudInitIpConfigModel `tfsdk:"v4"`
+	V6       *VirtualMachineCloudInitIpConfigModel `tfsdk:"v6"`
 }
 
 type VirtualMachineCloudInitIpConfigModel struct {
@@ -144,7 +144,6 @@ func (st CloudInitIpSetType) String() string {
 }
 
 func (c CloudInitIpSetType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
-	tflog.Info(ctx, fmt.Sprintf("PASSED IN: %v", in))
 	val, err := c.SetType.ValueFromTerraform(ctx, in)
 	if err != nil {
 		return nil, err
@@ -195,9 +194,9 @@ func CloudInitIpToSetValue(ctx context.Context, ip []vm.VirtualMachineCloudInitI
 	models := []VirtualMachineCloudInitIpModel{}
 	for _, i := range ip {
 		m := VirtualMachineCloudInitIpModel{
-			Positition: types.Int64Value(int64(i.Position)),
-			V4:         translateIpConfig(i.V4),
-			V6:         translateIpConfig(i.V6),
+			Position: types.Int64Value(int64(i.Position)),
+			V4:       translateIpConfig(i.V4),
+			V6:       translateIpConfig(i.V6),
 		}
 		models = append(models, m)
 	}
