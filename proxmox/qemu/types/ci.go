@@ -37,6 +37,7 @@ var CloudInitUserDataSourceAttributes = map[string]dschema.Attribute{
 	},
 	"password": dschema.StringAttribute{
 		Computed:    true,
+		Sensitive:   true,
 		Description: "The password of the user.",
 	},
 	"public_keys": dschema.SetAttribute{
@@ -119,6 +120,7 @@ var CloudInitUserAttributes = map[string]schema.Attribute{
 	},
 	"password": schema.StringAttribute{
 		Optional:    true,
+		Sensitive:   true,
 		Description: "The password of the user.",
 	},
 	"public_keys": schema.SetAttribute{
