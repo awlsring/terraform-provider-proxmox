@@ -6,7 +6,7 @@ import (
 
 	"github.com/awlsring/proxmox-go/proxmox"
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
-	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/schemas"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms/schemas"
 	vt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms/types"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"

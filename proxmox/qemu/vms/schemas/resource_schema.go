@@ -2,6 +2,7 @@ package schemas
 
 import (
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/defaults"
+	qs "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/schemas"
 	t "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
@@ -296,30 +297,30 @@ var ResourceSchema = schema.Schema{
 			Optional:     true,
 			Description:  "The terrafrom generated disks attached to the VM.",
 			CustomType:   t.NewVirtualMachineDiskSetType(),
-			NestedObject: DiskObjectSchema,
+			NestedObject: qs.DiskObjectSchema,
 		},
 		"computed_disks": schema.SetNestedAttribute{
 			Computed:     true,
 			Description:  "The non terrafrom generated disks attached to the VM.",
 			CustomType:   t.NewVirtualMachineDiskSetType(),
-			NestedObject: DiskObjectSchema,
+			NestedObject: qs.DiskObjectSchema,
 		},
 		"pci_devices": schema.SetNestedAttribute{
 			Optional:     true,
 			Description:  "PCI devices passed through to the VM.",
 			CustomType:   t.NewVirtualMachinePCIDeviceSetType(),
-			NestedObject: PCIDeviceObjectSchema,
+			NestedObject: qs.PCIDeviceObjectSchema,
 		},
 		"computed_pci_devices": schema.SetNestedAttribute{
 			Computed:     true,
 			Description:  "The non terraform generated PCI devices passed through to the VM.",
 			CustomType:   t.NewVirtualMachinePCIDeviceSetType(),
-			NestedObject: PCIDeviceObjectSchema,
+			NestedObject: qs.PCIDeviceObjectSchema,
 		},
 		"network_interfaces": schema.SetNestedAttribute{
 			Optional:     true,
 			CustomType:   t.NewVirtualMachineNetworkInterfaceSetType(),
-			NestedObject: NetworkInterfaceObjectSchema,
+			NestedObject: qs.NetworkInterfaceObjectSchema,
 			PlanModifiers: []planmodifier.Set{
 				setplanmodifier.UseStateForUnknown(),
 			},
@@ -327,7 +328,7 @@ var ResourceSchema = schema.Schema{
 		"computed_network_interfaces": schema.SetNestedAttribute{
 			Computed:     true,
 			CustomType:   t.NewVirtualMachineNetworkInterfaceSetType(),
-			NestedObject: NetworkInterfaceObjectSchema,
+			NestedObject: qs.NetworkInterfaceObjectSchema,
 		},
 		"memory": schema.SingleNestedAttribute{
 			Optional: true,

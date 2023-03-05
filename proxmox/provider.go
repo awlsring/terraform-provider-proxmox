@@ -15,6 +15,7 @@ import (
 	nfs_node "github.com/awlsring/terraform-provider-proxmox/proxmox/node-storage/nfs"
 	zfs_node "github.com/awlsring/terraform-provider-proxmox/proxmox/node-storage/zfs"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/nodes"
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/templates"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms"
 	resource_pools "github.com/awlsring/terraform-provider-proxmox/proxmox/resource-pools"
 	lvm_storage_class "github.com/awlsring/terraform-provider-proxmox/proxmox/storage-class/lvm"
@@ -208,7 +209,7 @@ func (p *ProxmoxProvider) DataSources(ctx context.Context) []func() datasource.D
 		bridges.DataSource,
 		resource_pools.DataSource,
 		vms.DataSource,
-		// templates.DataSource,
+		templates.DataSource,
 		zfs_pool.DataSource,
 		lvmthin.DataSource,
 		lvm.DataSource,

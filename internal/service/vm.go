@@ -40,23 +40,23 @@ func (c *Proxmox) GetVirtualMachineConfiguration(ctx context.Context, node strin
 	return &resp.Data, nil
 }
 
-func (c *Proxmox) DescribeTemplates(ctx context.Context, node string) ([]vm.VirtualMachine, error) {
+func (c *Proxmox) DescribeTemplates(ctx context.Context, node string) ([]*VirtualMachine, error) {
 	templates, err := c.ListTemplates(ctx, node)
 	if err != nil {
 		return nil, err
 	}
 
-	virtualMachineTemplates := []vm.VirtualMachine{}
-	for _, templateSummary := range templates {
-		virtualMachineTemplate, err := c.vmFromSummary(ctx, node, templateSummary)
+	var templateList []*VirtualMachine
+	for _, vm := range templates {
+		id := int(vm.Vmid)
+		cf, err := c.DescribeVirtualMachine(ctx, node, id)
 		if err != nil {
 			return nil, err
 		}
-
-		virtualMachineTemplates = append(virtualMachineTemplates, *virtualMachineTemplate)
+		templateList = append(templateList, cf)
 	}
 
-	return virtualMachineTemplates, nil
+	return templateList, nil
 }
 
 func (c *Proxmox) DeleteVirtualMachine(ctx context.Context, node string, vmid int) error {

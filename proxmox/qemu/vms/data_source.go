@@ -7,8 +7,7 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/internal/service"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/schemas"
-	vt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms/types"
-
+	qt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -28,7 +27,7 @@ type virtualMachinesDataSource struct {
 }
 
 type virtualMachinesDataSourceModel struct {
-	VirtualMachines vt.VirtualMachineDataSourceSetValue `tfsdk:"virtual_machines"`
+	VirtualMachines qt.VirtualMachineDataSourceSetValue `tfsdk:"virtual_machines"`
 	Filters         []filters.FilterModel               `tfsdk:"filters"`
 }
 
@@ -75,14 +74,14 @@ func (d *virtualMachinesDataSource) Read(ctx context.Context, req datasource.Rea
 			return
 		}
 
-		vmModels := []vt.VirtualMachineDataSourceModel{}
+		vmModels := []qt.VirtualMachineDataSourceModel{}
 		for _, vm := range vms {
 			tflog.Debug(ctx, fmt.Sprintf("Converting VM %v to model", vm.VmId))
-			model := vt.VMToModel(ctx, vm)
+			model := qt.VMToModel(ctx, vm)
 			vmModels = append(vmModels, *model)
 		}
 
-		state.VirtualMachines, err = vt.VirtualMachineDataSourceSetValueFrom(ctx, vmModels)
+		state.VirtualMachines, err = qt.VirtualMachineDataSourceSetValueFrom(ctx, vmModels)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Unable to convert virtual machines to state",

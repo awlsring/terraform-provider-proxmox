@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	qt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -38,9 +37,9 @@ var VirtualMachineDataSourceType = types.ObjectType{
 				"cpu_units":     types.Int64Type,
 			},
 		},
-		"disks":              qt.NewVirtualMachineDiskSetType(),
-		"network_interfaces": qt.NewVirtualMachineNetworkInterfaceSetType(),
-		"pci_devices":        qt.NewVirtualMachinePCIDeviceSetType(),
+		"disks":              NewVirtualMachineDiskSetType(),
+		"network_interfaces": NewVirtualMachineNetworkInterfaceSetType(),
+		"pci_devices":        NewVirtualMachinePCIDeviceSetType(),
 		"memory": types.ObjectType{
 			AttrTypes: map[string]attr.Type{
 				"dedicated": types.Int64Type,
@@ -59,7 +58,7 @@ var VirtualMachineDataSourceType = types.ObjectType{
 						"name": types.StringType,
 					},
 				},
-				"ip": qt.NewCloudInitIpSetType(),
+				"ip": NewCloudInitIpSetType(),
 				"dns": types.ObjectType{
 					AttrTypes: map[string]attr.Type{
 						"nameserver": types.StringType,

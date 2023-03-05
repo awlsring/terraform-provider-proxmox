@@ -1,8 +1,7 @@
 package schemas
 
 import (
-	t "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
-	vt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/vms/types"
+	qt "github.com/awlsring/terraform-provider-proxmox/proxmox/qemu/types"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -10,7 +9,7 @@ import (
 
 var DataSourceSchema = schema.SetNestedAttribute{
 	Computed:     true,
-	CustomType:   vt.NewVirtualMachineDataSourceType(),
+	CustomType:   qt.NewVirtualMachineDataSourceType(),
 	NestedObject: VirtualMachineDataSourceSchema,
 }
 
@@ -103,22 +102,21 @@ var VirtualMachineDataSourceSchema = schema.NestedAttributeObject{
 		"disks": schema.SetNestedAttribute{
 			Computed:     true,
 			Description:  "The terrafrom generated disks attached to the VM.",
-			CustomType:   t.NewVirtualMachineDiskSetType(),
+			CustomType:   qt.NewVirtualMachineDiskSetType(),
 			NestedObject: DiskObjectDataSourceSchema,
 		},
 		"pci_devices": schema.SetNestedAttribute{
 			Computed:     true,
 			Description:  "PCI devices passed through to the VM.",
-			CustomType:   t.NewVirtualMachinePCIDeviceSetType(),
+			CustomType:   qt.NewVirtualMachinePCIDeviceSetType(),
 			NestedObject: PCIDeviceObjectDataSourceSchema,
 		},
 		"network_interfaces": schema.SetNestedAttribute{
 			Computed:     true,
-			CustomType:   t.NewVirtualMachineNetworkInterfaceSetType(),
+			CustomType:   qt.NewVirtualMachineNetworkInterfaceSetType(),
 			NestedObject: NetworkInterfaceObjectDataSourceSchema,
 		},
 		"memory": schema.SingleNestedAttribute{
-			// Optional: true,
 			Computed: true,
 			Attributes: map[string]schema.Attribute{
 				"dedicated": schema.Int64Attribute{
@@ -153,7 +151,7 @@ var VirtualMachineDataSourceSchema = schema.NestedAttributeObject{
 		"cloud_init": schema.SingleNestedAttribute{
 			Computed:   true,
 			Optional:   true,
-			Attributes: t.CloudInitDataSourceAttributes,
+			Attributes: qt.CloudInitDataSourceAttributes,
 		},
 		"type": schema.StringAttribute{
 			Optional:    true,
