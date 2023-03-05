@@ -277,7 +277,10 @@ func (c *Proxmox) ConfigureVirtualMachine(ctx context.Context, input *ConfigureV
 		for _, n := range input.CloudInit.Ip {
 			config := FormIpConfigString(n.V4, n.V6)
 			fmt.Println("config str: ", *config)
-			vm.AllocateCiNetConfig(n.Position, config, &content)
+			err := vm.AllocateCiNetConfig(n.Position, config, &content)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if input.StartOnBoot {
@@ -291,7 +294,10 @@ func (c *Proxmox) ConfigureVirtualMachine(ctx context.Context, input *ConfigureV
 
 	for _, d := range input.Disks {
 		config := FormDiskString(d)
-		vm.AllocateDiskConfig(d.InterfaceType, d.Position, config, &content)
+		err := vm.AllocateDiskConfig(d.InterfaceType, d.Position, config, &content)
+		if err != nil {
+			return err
+		}
 	}
 
 	for _, p := range input.PCIDevices {
@@ -303,7 +309,10 @@ func (c *Proxmox) ConfigureVirtualMachine(ctx context.Context, input *ConfigureV
 			n.MAC = vm.GenerateMAC()
 		}
 		config := FormNetworkInterfaceString(n)
-		vm.AllocateNetworkInterfaceConfig(n.Position, config, &content)
+		err := vm.AllocateNetworkInterfaceConfig(n.Position, config, &content)
+		if err != nil {
+			return err
+		}
 	}
 
 	request := c.client.ApplyVirtualMachineConfigurationSync(ctx, input.Node, vmId)

@@ -61,6 +61,12 @@ func DetermineDiskConfiguration(cfg *proxmox.VirtualMachineConfigurationSummary)
 	}
 	virtualDisks = append(virtualDisks, sataDisks...)
 
+	unusedDisks, err := readDiskMap(cfgMap, "unused", 7)
+	if err != nil {
+		return nil, err
+	}
+	virtualDisks = append(virtualDisks, unusedDisks...)
+
 	return virtualDisks, nil
 }
 
@@ -163,22 +169,3 @@ func readDiskString(diskString string) (VirtualMachineDisk, error) {
 	disk.SpeedLimits = &diskSpeedLimits
 	return disk, nil
 }
-
-// func StrToBytes(sizeStr string) int64 {
-// 	sizeStr = strings.ToUpper(sizeStr)
-// 	size, _ := strconv.ParseInt(sizeStr[:len(sizeStr)-1], 10, 64)
-// 	unit := sizeStr[len(sizeStr)-1]
-
-// 	switch unit {
-// 	case 'G':
-// 		return size * 1024 * 1024 * 1024
-// 	case 'M':
-// 		return size * 1024 * 1024
-// 	case 'K':
-// 		return size * 1024
-// 	case 'T':
-// 		return size * 1024 * 1024 * 1024 * 1024
-// 	default:
-// 		return size
-// 	}
-// }

@@ -47,7 +47,11 @@ func (r *virtualMachineResource) clone(ctx context.Context, plan *vt.VirtualMach
 	}
 
 	// wait till clone is complete
-	r.waitForLock(ctx, node, vmId, r.timeouts.Clone)
+	err = r.waitForLock(ctx, node, vmId, r.timeouts.Clone)
+	if err != nil {
+		tflog.Error(ctx, "clone recieved error: "+err.Error())
+		return err
+	}
 
 	tflog.Debug(ctx, "clone virtual machine complete")
 	return nil

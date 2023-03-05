@@ -2,9 +2,7 @@ package vms
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/awlsring/proxmox-go/proxmox"
@@ -15,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/r3labs/diff/v3"
 )
 
 func (r *virtualMachineResource) modifyResourcePool(ctx context.Context, id int, was types.String, is types.String) error {
@@ -53,6 +50,7 @@ func (r *virtualMachineResource) modifyResourcePool(ctx context.Context, id int,
 func (r *virtualMachineResource) determineVmConfigurations(ctx context.Context, state *vt.VirtualMachineResourceModel, plan *vt.VirtualMachineResourceModel) error {
 	tflog.Debug(ctx, "determine virtual machine configurations method")
 	updates, deletes := formConfigureRequests(ctx, state, plan)
+
 	resizes, err := r.formResizeRequests(ctx, plan.Node.ValueString(), int(plan.ID.ValueInt64()), plan)
 	if err != nil {
 		return err
@@ -88,6 +86,12 @@ func (r *virtualMachineResource) determineVmConfigurations(ctx context.Context, 
 			return err
 		}
 	}
+
+	err = r.removeUnusedDisks(ctx, node, vmId)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -102,7 +106,10 @@ func (r *virtualMachineResource) configureVm(ctx context.Context, node string, v
 	tflog.Debug(ctx, "configure virtual machine complete")
 
 	tflog.Debug(ctx, "waiting for lock")
-	r.waitForLock(ctx, node, vmId, r.timeouts.Configure)
+	err = r.waitForLock(ctx, node, vmId, r.timeouts.Configure)
+	if err != nil {
+		return err
+	}
 	tflog.Debug(ctx, "lock released")
 	return nil
 }
@@ -114,7 +121,10 @@ func (r *virtualMachineResource) resizeDisk(ctx context.Context, node string, vm
 	}
 
 	tflog.Debug(ctx, "waiting for lock")
-	r.waitForLock(ctx, node, vmId, r.timeouts.Configure)
+	err = r.waitForLock(ctx, node, vmId, r.timeouts.Configure)
+	if err != nil {
+		return err
+	}
 	tflog.Debug(ctx, "lock released")
 
 	return nil
@@ -165,30 +175,32 @@ func (r *virtualMachineResource) formResizeRequests(ctx context.Context, node st
 	return resizes, nil
 }
 
-func determineDiskResizes(ctx context.Context, node string, vmId int, state *vt.VirtualMachineResourceModel, plan *vt.VirtualMachineResourceModel) []service.ResizeVirtualMachineDiskInput {
-	tflog.Debug(ctx, "determine disk resizes method")
-	var resizes []service.ResizeVirtualMachineDiskInput
-	if state == nil {
-		return resizes
+func (r *virtualMachineResource) removeUnusedDisks(ctx context.Context, node string, vmId int) error {
+	current, err := r.client.DescribeVirtualMachine(ctx, node, vmId)
+	if err != nil {
+		return err
 	}
 
-	for _, planDisk := range plan.Disks.Disks {
-		for _, stateDisk := range state.Disks.Disks {
-			if planDisk.Position.ValueInt64() == stateDisk.Position.ValueInt64() && planDisk.InterfaceType.ValueString() == stateDisk.InterfaceType.ValueString() && planDisk.Storage.ValueString() == stateDisk.Storage.ValueString() {
-				if planDisk.Size.ValueInt64() != stateDisk.Size.ValueInt64() {
-					disk := fmt.Sprintf("%s%v", planDisk.InterfaceType.ValueString(), planDisk.Position.ValueInt64())
-					resizes = append(resizes, service.ResizeVirtualMachineDiskInput{
-						Node: node,
-						VmId: vmId,
-						Disk: disk,
-						Size: utils.GbToBytes(planDisk.Size.ValueInt64()),
-					})
-				}
-			}
+	deletes := []string{}
+	for _, disk := range current.Disks {
+		if disk.InterfaceType == "unused" {
+			deletes = append(deletes, fmt.Sprintf("%s%v", disk.InterfaceType, disk.Position))
 		}
 	}
 
-	return resizes
+	if len(deletes) != 0 {
+		tflog.Debug(ctx, fmt.Sprintf("removing unused disks %v", deletes))
+		err = r.configureVm(ctx, node, vmId, &service.ConfigureVirtualMachineInput{
+			Node:   node,
+			VmId:   vmId,
+			Delete: deletes,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func determineUpdates(ctx context.Context, node string, vmId int, state *vt.VirtualMachineResourceModel, plan *vt.VirtualMachineResourceModel) *service.ConfigureVirtualMachineInput {
@@ -448,120 +460,6 @@ func determineAddedDisks(ctx context.Context, state []ct.VirtualMachineDiskModel
 	}
 
 	return addDisks
-}
-
-func formConfigureRequestsOld(ctx context.Context, state *vt.VirtualMachineResourceModel, plan *vt.VirtualMachineResourceModel) (*service.ConfigureVirtualMachineInput, []service.ResizeVirtualMachineDiskInput, error) {
-	node := plan.Node.ValueString()
-	vmId := int(plan.ID.ValueInt64())
-
-	pre := state
-	if state == nil {
-		pre = &vt.VirtualMachineResourceModel{}
-	}
-
-	diff, err := diff.Diff(*pre, *plan)
-	if err != nil {
-		return nil, nil, err
-	}
-	j, _ := json.Marshal(diff)
-	tflog.Debug(ctx, fmt.Sprintf("diff: %+v", string(j)))
-
-	r := service.ConfigureVirtualMachineInput{
-		Node: node,
-		VmId: vmId,
-	}
-
-	resizeRequests := []service.ResizeVirtualMachineDiskInput{}
-
-	do := false
-	for _, d := range diff {
-		if len(d.Path) == 0 {
-			continue
-		}
-		field := d.Path[0]
-		switch d.Type {
-		case "update":
-			if d.From != d.To {
-				if field == "Disks" {
-					if len(d.Path) <= 4 {
-						continue
-					}
-					if d.Path[3] == "Size" {
-						i, err := strconv.Atoi(d.Path[2])
-						if err != nil {
-							return nil, nil, err
-						}
-						resizeRequests = append(resizeRequests, formResizeRequest(ctx, i, plan))
-					}
-				} else {
-					do = true
-					setField(ctx, field, plan, &r)
-				}
-			}
-		case "create":
-			do = true
-			setField(ctx, field, plan, &r)
-		case "delete":
-			// create some conditional branch to formulate a removal
-			do = true
-			setField(ctx, field, plan, &r)
-		}
-	}
-
-	if do {
-		return &r, resizeRequests, nil
-	}
-	return nil, resizeRequests, nil
-}
-
-func setField(ctx context.Context, f string, m *vt.VirtualMachineResourceModel, r *service.ConfigureVirtualMachineInput) {
-	switch f {
-	case "Node":
-		r.Node = m.Node.ValueString()
-	case "VmId":
-		r.VmId = int(m.ID.ValueInt64())
-	case "Name":
-		r.Name = utils.OptionalToPointerString(m.Name.ValueString())
-	case "Description":
-		r.Description = utils.OptionalToPointerString(m.Description.ValueString())
-	case "Tags":
-		r.Tags = utils.SetTypeToStringSlice(m.Tags)
-	case "Agent":
-		r.Agent = FormAgentConfig(m.Agent)
-	case "Bios":
-		r.Bios = FormBIOSConfig(m.BIOS)
-	case "CPU":
-		r.CPU = FormCPUConfig(&m.CPU)
-	case "Disks":
-		r.Disks = FormDiskConfig(ctx, m.Disks.Disks)
-	case "NetworkInterfaces":
-		r.NetworkInterfaces = FormNetworkInterfaceConfig(m.NetworkInterfaces.Nics)
-	case "Memory":
-		r.Memory = FormMemoryConfig(&m.Memory)
-	case "CloudInit":
-		r.CloudInit = FormCloudInitConfig(ctx, m.CloudInit)
-	case "OsType":
-		r.OsType = FormOSTypeConfig(m.Type)
-	case "MachineType":
-		r.MachineType = utils.OptionalToPointerString(m.MachineType.ValueString())
-	case "KVMArguments":
-		r.KVMArguments = utils.OptionalToPointerString(m.KVMArguments.ValueString())
-	case "KeyboardLayout":
-		r.KeyboardLayout = FormKeyboardConfig(m.KeyboardLayout)
-	case "StartOnNodeBoot":
-		r.StartOnBoot = m.StartOnNodeBoot.ValueBool()
-	}
-}
-
-func formResizeRequest(ctx context.Context, elm int, m *vt.VirtualMachineResourceModel) service.ResizeVirtualMachineDiskInput {
-	d := m.Disks.Disks[elm]
-	disk := fmt.Sprintf("%v%v", d.InterfaceType.ValueString(), d.Position.ValueInt64())
-	return service.ResizeVirtualMachineDiskInput{
-		Node: m.Node.ValueString(),
-		VmId: int(m.ID.ValueInt64()),
-		Disk: disk,
-		Size: utils.GbToBytes(d.Size.ValueInt64()),
-	}
 }
 
 func FormNetworkInterfaceConfig(nics []ct.VirtualMachineNetworkInterfaceModel) []service.ConfigureVirtualMachineNetworkInterfaceOptions {
