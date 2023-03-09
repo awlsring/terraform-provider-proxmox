@@ -10,25 +10,6 @@ import (
 	"github.com/awlsring/terraform-provider-proxmox/internal/service/vm"
 )
 
-func (c *Proxmox) ListTemplates(ctx context.Context, node string) ([]proxmox.VirtualMachineSummary, error) {
-	request := c.client.ListVirtualMachines(ctx, node)
-	resp, _, err := c.client.ListVirtualMachinesExecute(request)
-	if err != nil {
-		return nil, err
-	}
-
-	templateSummaries := []proxmox.VirtualMachineSummary{}
-	for _, vmSummary := range resp.Data {
-		if vmSummary.HasTemplate() {
-			if *vmSummary.Template == 1 {
-				templateSummaries = append(templateSummaries, vmSummary)
-			}
-		}
-	}
-
-	return templateSummaries, nil
-}
-
 func (c *Proxmox) GetVirtualMachineConfiguration(ctx context.Context, node string, vmId int) (*proxmox.VirtualMachineConfigurationSummary, error) {
 	vmIdStr := strconv.Itoa(vmId)
 	request := c.client.GetVirtualMachineConfiguration(ctx, node, vmIdStr)
@@ -38,25 +19,6 @@ func (c *Proxmox) GetVirtualMachineConfiguration(ctx context.Context, node strin
 	}
 
 	return &resp.Data, nil
-}
-
-func (c *Proxmox) DescribeTemplates(ctx context.Context, node string) ([]*VirtualMachine, error) {
-	templates, err := c.ListTemplates(ctx, node)
-	if err != nil {
-		return nil, err
-	}
-
-	var templateList []*VirtualMachine
-	for _, vm := range templates {
-		id := int(vm.Vmid)
-		cf, err := c.DescribeVirtualMachine(ctx, node, id)
-		if err != nil {
-			return nil, err
-		}
-		templateList = append(templateList, cf)
-	}
-
-	return templateList, nil
 }
 
 func (c *Proxmox) DeleteVirtualMachine(ctx context.Context, node string, vmid int) error {
