@@ -90,6 +90,8 @@ func (r *zfsResource) Create(ctx context.Context, req resource.CreateRequest, re
 		}
 		break
 	}
+	pool.Disks = plan.Disks
+
 	tflog.Debug(ctx, fmt.Sprintf("created ZFS pool with id '%s'", pool.ID.ValueString()))
 
 	diags = resp.State.Set(ctx, &pool)

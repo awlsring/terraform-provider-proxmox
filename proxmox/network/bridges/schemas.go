@@ -3,6 +3,7 @@ package bridges
 import (
 	"regexp"
 
+	"github.com/awlsring/terraform-provider-proxmox/proxmox/defaults"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/filters"
 	"github.com/awlsring/terraform-provider-proxmox/proxmox/network"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -98,13 +99,16 @@ var resourceSchema = rs.Schema{
 		"active": rs.BoolAttribute{
 			Computed:    true,
 			Description: "If the bridge is active.",
+			PlanModifiers: []planmodifier.Bool{
+				boolplanmodifier.UseStateForUnknown(),
+			},
 		},
 		"autostart": rs.BoolAttribute{
 			Optional:    true,
 			Computed:    true,
 			Description: "If the bridge is set to autostart.",
 			PlanModifiers: []planmodifier.Bool{
-				boolplanmodifier.UseStateForUnknown(),
+				defaults.DefaultBool(true),
 			},
 		},
 		"vlan_aware": rs.BoolAttribute{
