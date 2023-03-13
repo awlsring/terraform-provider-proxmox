@@ -91,6 +91,7 @@ func (c *Proxmox) CreateZFSStorageClass(ctx context.Context, input *CreateZFSSto
 		Type:    proxmox.STORAGETYPE_ZFSPOOL,
 		Content: SliceToStringCommaListPtr(input.ContentTypes),
 		Pool:    &input.Pool,
+		Nodes:   SliceToStringCommaListPtr(input.Nodes),
 	}
 	request = request.CreateStorageRequestContent(content)
 
