@@ -29,26 +29,26 @@ type virtualMachineResource struct {
 	timeouts *VirtualMachineTimeouts
 }
 
+type ConfigureMode string
+
+const (
+	ConfigureModeCreate ConfigureMode = "create"
+	ConfigureModeUpdate ConfigureMode = "update"
+	ConfigureModeDelete ConfigureMode = "delete"
+)
+
 func (r *virtualMachineResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_virtual_machine"
 }
 
-func (r *virtualMachineResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	tflog.Debug(ctx, "ModifyPlan virtual machine method")
-	var plan vt.VirtualMachineResourceModel
-	diags := req.Plan.Get(ctx, &plan)
-	if diags.HasError() {
-		tflog.Debug(ctx, "Plan is delete, skipping")
+func (r *virtualMachineResource) createPlanModifiers(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse, plan *vt.VirtualMachineResourceModel) {
+	authCreateValidator(ctx, r.client.IsRoot, plan, resp)
+	if resp.Diagnostics.HasError() {
 		return
 	}
+}
 
-	var state vt.VirtualMachineResourceModel
-	diags = req.State.Get(ctx, &state)
-	if diags.HasError() {
-		tflog.Debug(ctx, "Plan is create, skipping")
-		return
-	}
-
+func (r *virtualMachineResource) updatePlanModifiers(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse, state *vt.VirtualMachineResourceModel, plan *vt.VirtualMachineResourceModel) {
 	node := plan.Node.ValueString()
 	vmId := int(state.ID.ValueInt64())
 
@@ -61,22 +61,53 @@ func (r *virtualMachineResource) ModifyPlan(ctx context.Context, req resource.Mo
 		return
 	}
 	if status.Status != proxmox.VIRTUALMACHINESTATUS_RUNNING {
-		powerOffValidator(ctx, r.client, &state, &plan, resp)
+		powerOffValidator(ctx, r.client, state, plan, resp)
 	}
 
-	changeValidatorDiskSize(ctx, &state, &plan, resp)
-	changeValidatorDiskStorage(ctx, &state, &plan, resp)
-	changeValidatorDiskRemoved(ctx, &state, &plan, resp)
+	authUpdateValidator(ctx, r.client.IsRoot, plan, resp)
+
+	changeValidatorDiskSize(ctx, state, plan, resp)
+	changeValidatorDiskStorage(ctx, state, plan, resp)
+	changeValidatorDiskRemoved(ctx, state, plan, resp)
 	// carry over computed values sets to prevent unnecessary diffs
 	amended := plan
 	amended.ComputedDisks = state.ComputedDisks
 	amended.ComputedNetworkInterfaces = state.ComputedNetworkInterfaces
 	amended.ComputedPCIDevices = state.ComputedPCIDevices
 
-	diags = resp.Plan.Set(ctx, &amended)
+	diags := resp.Plan.Set(ctx, &amended)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+}
+
+func (r *virtualMachineResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	tflog.Debug(ctx, "ModifyPlan virtual machine method")
+	configureMode := ConfigureModeUpdate
+
+	var plan vt.VirtualMachineResourceModel
+	diags := req.Plan.Get(ctx, &plan)
+	if diags.HasError() {
+		configureMode = ConfigureModeDelete
+	}
+
+	var state vt.VirtualMachineResourceModel
+	diags = req.State.Get(ctx, &state)
+	if diags.HasError() {
+		configureMode = ConfigureModeCreate
+	}
+
+	tflog.Info(ctx, fmt.Sprintf("configureMode '%v'", configureMode))
+
+	switch configureMode {
+	case ConfigureModeCreate:
+		r.createPlanModifiers(ctx, req, resp, &plan)
+		return
+	case ConfigureModeDelete:
+		return
+	default:
+		r.updatePlanModifiers(ctx, req, resp, &state, &plan)
 	}
 }
 

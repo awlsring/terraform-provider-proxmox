@@ -13,6 +13,7 @@ import (
 
 type Proxmox struct {
 	client *proxmox.DefaultApiService
+	IsRoot bool
 }
 
 type ClientConfig struct {
@@ -54,6 +55,7 @@ func newTokenClient(c ClientConfig, cfg *proxmox.Configuration) (*Proxmox, error
 	client := proxmox.NewAPIClient(cfg)
 	return &Proxmox{
 		client: client.DefaultApi,
+		IsRoot: false,
 	}, nil
 }
 
@@ -61,6 +63,7 @@ func newBasicAuthClient(c ClientConfig, cfg *proxmox.Configuration) (*Proxmox, e
 	client := proxmox.NewAPIClient(cfg)
 	p := &Proxmox{
 		client: client.DefaultApi,
+		IsRoot: c.Username == "root@pam",
 	}
 
 	ticket, err := p.login(c.Username, c.Password)

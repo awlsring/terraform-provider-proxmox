@@ -45,7 +45,11 @@ var ResourceSchema = schema.Schema{
 		},
 		"description": schema.StringAttribute{
 			Optional:    true,
+			Computed:    true,
 			Description: "The virtual machine description.",
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+			},
 		},
 		"tags": schema.SetAttribute{
 			Optional:    true,
@@ -201,10 +205,11 @@ var ResourceSchema = schema.Schema{
 					"cpu_units":     types.Int64Value(100),
 				}),
 			},
+			// requires root, make computed til this can be warned about
 			Attributes: map[string]schema.Attribute{
 				"architecture": schema.StringAttribute{
-					Optional:    true,
 					Computed:    true,
+					Optional:    true,
 					Description: "The CPU architecture.",
 					Validators: []validator.String{
 						stringvalidator.OneOf(
@@ -213,7 +218,8 @@ var ResourceSchema = schema.Schema{
 						),
 					},
 					PlanModifiers: []planmodifier.String{
-						defaults.DefaultString("x86_64"),
+						stringplanmodifier.RequiresReplace(),
+						stringplanmodifier.UseStateForUnknown(),
 					},
 				},
 				"cores": schema.Int64Attribute{
