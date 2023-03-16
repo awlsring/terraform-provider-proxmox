@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
@@ -28,6 +29,10 @@ var DiskObjectDataSourceSchema = dschema.NestedAttributeObject{
 		"use_iothread": dschema.BoolAttribute{
 			Computed:    true,
 			Description: "Whether to use an iothread for the disk.",
+		},
+		"name": dschema.StringAttribute{
+			Computed:    true,
+			Description: "The disks generated name",
 		},
 		"speed_limits": dschema.SingleNestedAttribute{
 			Computed:    true,
@@ -134,6 +139,13 @@ var DiskObjectSchema = schema.NestedAttributeObject{
 					"sata",
 					"virtio",
 				),
+			},
+		},
+		"name": schema.StringAttribute{
+			Computed:    true,
+			Description: "The disks generated name",
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
 			},
 		},
 		// add conflict with virtio

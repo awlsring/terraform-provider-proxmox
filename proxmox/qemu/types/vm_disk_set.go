@@ -18,6 +18,7 @@ var VirtualMachineDisk = types.ObjectType{
 		"storage":      types.StringType,
 		"file_format":  types.StringType,
 		"size":         types.Int64Type,
+		"name":         types.StringType,
 		"use_iothread": types.BoolType,
 		"speed_limits": types.ObjectType{
 			AttrTypes: map[string]attr.Type{
@@ -121,6 +122,7 @@ type VirtualMachineDiskModel struct {
 	SSDEmulation  types.Bool                          `tfsdk:"ssd_emulation"`
 	Position      types.Int64                         `tfsdk:"position"`
 	Discard       types.Bool                          `tfsdk:"discard"`
+	Name          types.String                        `tfsdk:"name"`
 }
 
 type VirtualMachineDiskSpeedLimitsModel struct {
@@ -142,6 +144,7 @@ func VirtualMachineDiskToSetValue(ctx context.Context, disks []vm.VirtualMachine
 			SSDEmulation:  types.BoolValue(disk.SSDEmulation),
 			Position:      types.Int64Value(int64(disk.Position)),
 			Discard:       types.BoolValue(disk.Discard),
+			Name:          types.StringValue(disk.Name),
 		}
 		if disk.FileFormat != nil {
 			m.FileFormat = types.StringValue(string(*disk.FileFormat))

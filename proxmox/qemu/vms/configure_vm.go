@@ -206,10 +206,11 @@ func (r *virtualMachineResource) removeUnusedDisks(ctx context.Context, node str
 func determineUpdates(ctx context.Context, node string, vmId int, state *vt.VirtualMachineResourceModel, plan *vt.VirtualMachineResourceModel) *service.ConfigureVirtualMachineInput {
 	tflog.Debug(ctx, "determine configuration updates method")
 	request := &service.ConfigureVirtualMachineInput{
-		Node:   node,
-		VmId:   vmId,
-		Memory: FormMemoryConfig(&plan.Memory),
-		CPU:    FormCPUConfig(&plan.CPU),
+		Node:              node,
+		VmId:              vmId,
+		Memory:            FormMemoryConfig(&plan.Memory),
+		CPU:               FormCPUConfig(&plan.CPU),
+		NetworkInterfaces: FormNetworkInterfaceConfig(plan.NetworkInterfaces.Nics),
 	}
 
 	old := state
@@ -229,15 +230,11 @@ func determineUpdates(ctx context.Context, node string, vmId int, state *vt.Virt
 		request.Tags = utils.SetTypeToStringSlice(plan.Tags)
 	}
 
-	newDisks := determineAddedDisks(ctx, old.Disks.Disks, plan.Disks.Disks)
+	newDisks, existingDisks := determineAddedDisks(ctx, old.Disks.Disks, plan.Disks.Disks)
 	if len(newDisks) > 0 {
-		request.Disks = FormDiskConfig(ctx, newDisks)
+		request.Disks = FormDiskConfig(ctx, newDisks, true)
 	}
-
-	newNics := determineAddedNetworkInterfaces(ctx, old.NetworkInterfaces.Nics, plan.NetworkInterfaces.Nics)
-	if len(newNics) > 0 {
-		request.NetworkInterfaces = FormNetworkInterfaceConfig(newNics)
-	}
+	request.Disks = append(request.Disks, FormDiskConfig(ctx, existingDisks, false)...)
 
 	if plan.Agent != nil {
 		request.Agent = FormAgentConfig(plan.Agent)
@@ -395,23 +392,6 @@ func determineRemovedNetworkInterfaces(ctx context.Context, state []ct.VirtualMa
 	return removeNics
 }
 
-func determineAddedNetworkInterfaces(ctx context.Context, state []ct.VirtualMachineNetworkInterfaceModel, plan []ct.VirtualMachineNetworkInterfaceModel) []ct.VirtualMachineNetworkInterfaceModel {
-	stateNics, planNics := flattenNetworkInterfaces(ctx, state, plan)
-
-	addNics := []ct.VirtualMachineNetworkInterfaceModel{}
-	for _, nic := range planNics {
-		if !utils.ListContains(stateNics, nic) {
-			for _, n := range plan {
-				if fmt.Sprintf("net%v", n.Position.ValueInt64()) == nic {
-					addNics = append(addNics, n)
-				}
-			}
-		}
-	}
-
-	return addNics
-}
-
 func determineRemovedDisks(ctx context.Context, state []ct.VirtualMachineDiskModel, plan []ct.VirtualMachineDiskModel) []string {
 	stateDisks, planDisks := flattenDisks(ctx, state, plan)
 	tflog.Debug(ctx, fmt.Sprintf("stateDisks: %v", stateDisks))
@@ -444,22 +424,45 @@ func flattenDisks(ctx context.Context, state []ct.VirtualMachineDiskModel, plan 
 	return stateDisks, planDisks
 }
 
-func determineAddedDisks(ctx context.Context, state []ct.VirtualMachineDiskModel, plan []ct.VirtualMachineDiskModel) []ct.VirtualMachineDiskModel {
+func determineAddedDisks(ctx context.Context, state []ct.VirtualMachineDiskModel, plan []ct.VirtualMachineDiskModel) ([]ct.VirtualMachineDiskModel, []ct.VirtualMachineDiskModel) {
 	stateDisks, planDisks := flattenDisks(ctx, state, plan)
 
-	addDisks := []ct.VirtualMachineDiskModel{}
+	addedDisks := []ct.VirtualMachineDiskModel{}
+	existingDisks := []ct.VirtualMachineDiskModel{}
 	for _, disk := range planDisks {
 		if !utils.ListContains(stateDisks, disk) {
-			d := strings.Split(disk, ":")[0]
-			for _, pd := range plan {
-				if fmt.Sprintf("%s%v", pd.InterfaceType.ValueString(), pd.Position.ValueInt64()) == d {
-					addDisks = append(addDisks, pd)
+			addedDisks = append(addedDisks, formDiskModel(disk, plan)...)
+		} else {
+			diskModels := formDiskModel(disk, plan)
+
+			for _, diskModel := range diskModels {
+				for _, s := range state {
+					d1 := fmt.Sprintf("%s%v", diskModel.InterfaceType.ValueString(), diskModel.Position.ValueInt64())
+					d2 := fmt.Sprintf("%s%v", s.InterfaceType.ValueString(), s.Position.ValueInt64())
+					if d1 == d2 {
+						tflog.Info(ctx, fmt.Sprintf("size of plan disk %s is %v", d1, diskModel.Size.ValueInt64()))
+						tflog.Info(ctx, fmt.Sprintf("size of state disk %s is %v", d2, s.Size.ValueInt64()))
+						diskModel.Size = s.Size
+						diskModel.Name = s.Name
+						existingDisks = append(existingDisks, diskModel)
+					}
 				}
 			}
 		}
 	}
 
-	return addDisks
+	return addedDisks, existingDisks
+}
+
+func formDiskModel(disk string, models []ct.VirtualMachineDiskModel) []ct.VirtualMachineDiskModel {
+	disks := []ct.VirtualMachineDiskModel{}
+	d := strings.Split(disk, ":")[0]
+	for _, pd := range models {
+		if fmt.Sprintf("%s%v", pd.InterfaceType.ValueString(), pd.Position.ValueInt64()) == d {
+			disks = append(disks, pd)
+		}
+	}
+	return disks
 }
 
 func FormNetworkInterfaceConfig(nics []ct.VirtualMachineNetworkInterfaceModel) []service.ConfigureVirtualMachineNetworkInterfaceOptions {
@@ -481,7 +484,7 @@ func FormNetworkInterfaceConfig(nics []ct.VirtualMachineNetworkInterfaceModel) [
 	return n
 }
 
-func FormDiskConfig(ctx context.Context, disks []ct.VirtualMachineDiskModel) []service.ConfigureVirtualMachineDiskOptions {
+func FormDiskConfig(ctx context.Context, disks []ct.VirtualMachineDiskModel, new bool) []service.ConfigureVirtualMachineDiskOptions {
 	tflog.Debug(ctx, "Entered form disk config")
 	d := make([]service.ConfigureVirtualMachineDiskOptions, len(disks))
 	tflog.Debug(ctx, fmt.Sprintf("Disks to configure: %v", len(disks)))
@@ -489,12 +492,18 @@ func FormDiskConfig(ctx context.Context, disks []ct.VirtualMachineDiskModel) []s
 		dconfig := service.ConfigureVirtualMachineDiskOptions{
 			Storage:       v.Storage.ValueString(),
 			FileFormat:    utils.OptionalToPointerString(v.FileFormat.ValueString()),
-			Size:          int(v.Size.ValueInt64()),
 			UseIOThreads:  v.UseIOThread.ValueBool(),
+			Size:          int(v.Size.ValueInt64()),
 			Position:      int(v.Position.ValueInt64()),
 			InterfaceType: v.InterfaceType.ValueString(),
 			SSDEmulation:  v.SSDEmulation.ValueBool(),
 			Discard:       v.Discard.ValueBool(),
+			New:           new,
+		}
+
+		if !v.Name.IsNull() || !v.Name.IsUnknown() {
+			name := v.Name.ValueString()
+			dconfig.Name = &name
 		}
 
 		if v.SpeedLimits != nil {
@@ -506,7 +515,7 @@ func FormDiskConfig(ctx context.Context, disks []ct.VirtualMachineDiskModel) []s
 			dconfig.SpeedLimits = &s
 		}
 
-		tflog.Debug(ctx, fmt.Sprintf("Disk %v: %v", i, dconfig))
+		tflog.Info(ctx, fmt.Sprintf("Disk %v: %v", i, dconfig))
 
 		d[i] = dconfig
 	}

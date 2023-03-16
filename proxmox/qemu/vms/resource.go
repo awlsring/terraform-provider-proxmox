@@ -146,9 +146,21 @@ func (r *virtualMachineResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
+	node := plan.Node.ValueString()
+	vmId := int(plan.ID.ValueInt64())
+	vm, err := r.client.DescribeVirtualMachine(ctx, node, vmId)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error creating virtual machine",
+			"Could not create virtual machine, unexpected error: "+err.Error(),
+		)
+		return
+	}
+	currentModel := vt.VMToResourceModel(ctx, vm, &plan)
+
 	// configure
 	tflog.Debug(ctx, "Configuring virtual machine")
-	err = r.determineVmConfigurations(ctx, nil, &plan)
+	err = r.determineVmConfigurations(ctx, currentModel, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error configuring virtual machine",

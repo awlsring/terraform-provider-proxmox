@@ -20,6 +20,7 @@ type VirtualMachineDisk struct {
 	SpeedLimits   *VirtualMachineDiskSpeedLimits
 	SSDEmulation  bool
 	Discard       bool
+	Name          string
 }
 
 type VirtualMachineDiskSpeedLimits struct {
@@ -110,6 +111,7 @@ func readDiskString(diskString string) (VirtualMachineDisk, error) {
 		return disk, fmt.Errorf("invalid disk storage string: %s", storageStr)
 	}
 	disk.Storage = storage[0]
+	disk.Name = storage[1]
 
 	diskSpeedLimits := VirtualMachineDiskSpeedLimits{}
 	for _, option := range options {

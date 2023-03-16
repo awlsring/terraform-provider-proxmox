@@ -56,6 +56,8 @@ type ConfigureVirtualMachineDiskOptions struct {
 	SpeedLimits   *ConfigureVirtualMachineDiskSpeedLimitsOptions `json:"speedLimits,omitempty"`
 	SSDEmulation  bool                                           `json:"ssdEmulation"`
 	Discard       bool                                           `json:"discard"`
+	Name          *string                                        `json:"diskName,omitempty"`
+	New           bool                                           `json:"new"`
 }
 
 type ConfigureVirtualMachineDiskSpeedLimitsOptions struct {
@@ -138,8 +140,40 @@ func FormAgentString(agent bool, fstrim bool, t *string) *string {
 	return &agentStr
 }
 
-func FormDiskString(opts ConfigureVirtualMachineDiskOptions) *string {
+func FormNewDiskString(opts ConfigureVirtualMachineDiskOptions) *string {
 	diskstr := opts.Storage + ":" + strconv.Itoa(opts.Size)
+	if opts.Discard {
+		diskstr = diskstr + ",discard=on"
+	}
+	if opts.SSDEmulation {
+		diskstr = diskstr + ",ssd=on"
+	}
+	if opts.UseIOThreads {
+		diskstr = diskstr + ",iothread=1"
+	}
+	if opts.FileFormat != nil {
+		diskstr = diskstr + ",format=" + *opts.FileFormat
+	}
+	if opts.SpeedLimits != nil {
+		if opts.SpeedLimits.Read != nil {
+			diskstr = diskstr + fmt.Sprintf(",mbps_rd=%v", *opts.SpeedLimits.Read)
+		}
+		if opts.SpeedLimits.Write != nil {
+			diskstr = diskstr + fmt.Sprintf(",mbps_wr=%v", *opts.SpeedLimits.Write)
+		}
+		if opts.SpeedLimits.WriteBurstable != nil {
+			diskstr = diskstr + fmt.Sprintf(",mbps_wr_max=%v", *opts.SpeedLimits.WriteBurstable)
+		}
+		if opts.SpeedLimits.ReadBurstable != nil {
+			diskstr = diskstr + fmt.Sprintf(",mbps_rd_max=%v", *opts.SpeedLimits.ReadBurstable)
+		}
+	}
+
+	return &diskstr
+}
+
+func FormDiskString(opts ConfigureVirtualMachineDiskOptions) *string {
+	diskstr := opts.Storage + ":" + *opts.Name
 	if opts.Discard {
 		diskstr = diskstr + ",discard=on"
 	}
@@ -293,10 +327,18 @@ func (c *Proxmox) ConfigureVirtualMachine(ctx context.Context, input *ConfigureV
 	}
 
 	for _, d := range input.Disks {
-		config := FormDiskString(d)
-		err := vm.AllocateDiskConfig(d.InterfaceType, d.Position, config, &content)
-		if err != nil {
-			return err
+		if d.New {
+			config := FormNewDiskString(d)
+			err := vm.AllocateDiskConfig(d.InterfaceType, d.Position, config, &content)
+			if err != nil {
+				return err
+			}
+		} else {
+			config := FormDiskString(d)
+			err := vm.AllocateDiskConfig(d.InterfaceType, d.Position, config, &content)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
